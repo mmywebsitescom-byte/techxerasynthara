@@ -1,0 +1,543 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-cinzel: 'Cinzel', serif;
+    --font-rajdhani: 'Rajdhani', sans-serif;
+    --font-oxanium: 'Oxanium', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+    --font-outfit: 'Outfit', sans-serif;
+    --font-script: 'Great Vibes', 'Alex Brush', 'Allura', cursive;
+  }
+
+  body {
+    font-family: 'Rajdhani', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: #07090c;
+    color: #F0F2F5;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Cinzel', serif;
+  }
+}
+
+.font-cinzel {
+  font-family: 'Cinzel', serif;
+}
+
+.font-rajdhani {
+  font-family: 'Rajdhani', sans-serif;
+}
+
+.font-oxanium {
+  font-family: 'Oxanium', sans-serif;
+}
+
+.font-mono {
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.font-outfit {
+  font-family: 'Outfit', sans-serif;
+}
+
+.font-script {
+  font-family: 'Great Vibes', 'Alex Brush', 'Allura', cursive;
+}
+
+/* ==========================================================================
+   SHADOW FIGHT TEXT STYLES
+   ========================================================================== */
+
+/* Imperial Gold Text Gradient with Shadow */
+.sf-text-gold {
+  background: linear-gradient(180deg, #FFFDF0 0%, #F5D061 50%, #B38728 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.9));
+}
+
+/* Crimson Warrior Text Gradient */
+.sf-text-crimson {
+  background: linear-gradient(180deg, #FFB3B3 0%, #E63946 50%, #8B0000 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 8px rgba(180, 0, 0, 0.6));
+}
+
+/* Silver Katana Text Gradient */
+.sf-text-silver {
+  background: linear-gradient(180deg, #FFFFFF 0%, #E2E8F0 50%, #94A3B8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.9));
+}
+
+/* Shadow Fight Banner Text (matching the screenshot's 'EXCITING 3D FIGHTS') */
+.sf-banner-title {
+  font-family: 'Cinzel', serif;
+  color: #FFFFFF;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.95), 0 0 20px rgba(255, 70, 85, 0.4);
+}
+
+/* Subtitle & Badge Typography */
+.sf-sublabel {
+  font-family: 'Rajdhani', sans-serif;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   SHADOW FIGHT BOX UI (Cards, Panels, and Banners)
+   ========================================================================== */
+
+/* The Signature Crimson Brush Banner (Top of section or card header) */
+.sf-banner-red {
+  position: relative;
+  background: linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(120, 10, 10, 0.9) 15%, rgba(160, 20, 20, 0.96) 50%, rgba(120, 10, 10, 0.9) 85%, rgba(0,0,0,0) 100%);
+  border-top: 1px solid rgba(255, 70, 85, 0.6);
+  border-bottom: 1px solid rgba(255, 70, 85, 0.6);
+  box-shadow: 0 0 25px rgba(180, 20, 20, 0.35);
+}
+
+/* Shadow Fight Obsidian Panel / Card */
+.sf-card {
+  position: relative;
+  background: linear-gradient(180deg, rgba(20, 26, 36, 0.92) 0%, rgba(13, 17, 24, 0.95) 50%, rgba(8, 11, 16, 0.98) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85), inset 0 1px 1px rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sf-card:hover {
+  border-color: rgba(212, 175, 55, 0.7);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.9), 0 0 20px rgba(212, 175, 55, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+/* Shadow Fight Crimson Combat Card */
+.sf-card-crimson {
+  position: relative;
+  background: linear-gradient(180deg, rgba(28, 14, 18, 0.92) 0%, rgba(18, 9, 12, 0.95) 50%, rgba(10, 5, 7, 0.98) 100%);
+  border: 1px solid rgba(220, 38, 38, 0.45);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85), inset 0 1px 1px rgba(255, 100, 100, 0.1);
+  backdrop-filter: blur(12px);
+  transition: all 0.25s ease;
+}
+
+.sf-card-crimson:hover {
+  border-color: rgba(239, 68, 68, 0.8);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.9), 0 0 25px rgba(220, 38, 38, 0.3);
+  transform: translateY(-2px);
+}
+
+/* Chamfered 45-degree Angled Combat Clip Path */
+.sf-clip-angled {
+  clip-path: polygon(
+    12px 0, 
+    calc(100% - 12px) 0, 
+    100% 12px, 
+    100% calc(100% - 12px), 
+    calc(100% - 12px) 100%, 
+    12px 100%, 
+    0 calc(100% - 12px), 
+    0 12px
+  );
+}
+
+.sf-clip-angled-sm {
+  clip-path: polygon(
+    8px 0, 
+    calc(100% - 8px) 0, 
+    100% 8px, 
+    100% calc(100% - 8px), 
+    calc(100% - 8px) 100%, 
+    8px 100%, 
+    0 calc(100% - 8px), 
+    0 8px
+  );
+}
+
+/* Decorative Gold Corner Brackets */
+.sf-bracket-tl {
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 10px;
+  height: 10px;
+  border-top: 2px solid #D4AF37;
+  border-left: 2px solid #D4AF37;
+  pointer-events: none;
+}
+.sf-bracket-tr {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 10px;
+  height: 10px;
+  border-top: 2px solid #D4AF37;
+  border-right: 2px solid #D4AF37;
+  pointer-events: none;
+}
+.sf-bracket-bl {
+  position: absolute;
+  bottom: -1px;
+  left: -1px;
+  width: 10px;
+  height: 10px;
+  border-bottom: 2px solid #D4AF37;
+  border-left: 2px solid #D4AF37;
+  pointer-events: none;
+}
+.sf-bracket-br {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 10px;
+  height: 10px;
+  border-bottom: 2px solid #D4AF37;
+  border-right: 2px solid #D4AF37;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   SHADOW FIGHT BUTTONS
+   ========================================================================== */
+
+/* Primary Crimson Combat Button */
+.sf-btn-crimson {
+  position: relative;
+  background: linear-gradient(180deg, #8F1414 0%, #5C0B0B 50%, #3B0606 100%);
+  color: #FFFFFF;
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border: 1px solid rgba(255, 100, 100, 0.7);
+  box-shadow: 0 4px 20px rgba(180, 20, 20, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.sf-btn-crimson:hover {
+  background: linear-gradient(180deg, #B51D1D 0%, #7A1010 50%, #4D0909 100%);
+  border-color: rgba(255, 150, 150, 0.9);
+  box-shadow: 0 0 25px rgba(220, 38, 38, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+.sf-btn-crimson:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 10px rgba(180, 20, 20, 0.4);
+}
+
+/* Imperial Gold Combat Button */
+.sf-btn-gold {
+  position: relative;
+  background: linear-gradient(180deg, #F5D061 0%, #D4AF37 50%, #996515 100%);
+  color: #0E0A03;
+  font-family: 'Cinzel', serif;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px solid #FFE699;
+  box-shadow: 0 4px 20px rgba(212, 175, 55, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.6);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.sf-btn-gold:hover {
+  background: linear-gradient(180deg, #FFE082 0%, #E5C158 50%, #B37E22 100%);
+  border-color: #FFFFFF;
+  box-shadow: 0 0 25px rgba(245, 208, 97, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.8);
+  transform: translateY(-1px);
+}
+
+.sf-btn-gold:active {
+  transform: translateY(1px);
+}
+
+/* Obsidian Steel Combat Button */
+.sf-btn-steel {
+  position: relative;
+  background: linear-gradient(180deg, #1A212D 0%, #121721 50%, #0A0D13 100%);
+  color: #E2E8F0;
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.sf-btn-steel:hover {
+  background: linear-gradient(180deg, #242D3C 0%, #171E2B 50%, #0F131C 100%);
+  border-color: rgba(212, 175, 55, 0.8);
+  color: #FFFFFF;
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+/* Badges */
+.sf-badge-gold {
+  background: rgba(18, 22, 30, 0.9);
+  border: 1px solid #D4AF37;
+  color: #F5D061;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+}
+
+.sf-badge-crimson {
+  background: rgba(45, 12, 16, 0.9);
+  border: 1px solid #EF4444;
+  color: #FCA5A5;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+}
+
+/* Custom Shadow Combat Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #07090c;
+}
+::-webkit-scrollbar-thumb {
+  background: #241a1a;
+  border-radius: 2px;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #8F1414;
+  box-shadow: 0 0 10px rgba(220, 38, 38, 0.8);
+}
+
+/* Hide scrollbar */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ==========================================================================
+   GOTHIC / BLACKLETTER FONT UTILITIES
+   ========================================================================== */
+
+.font-gothic {
+  font-family: 'UnifrakturMaguntia', 'MedievalSharp', 'Cinzel', serif;
+}
+
+.font-medieval {
+  font-family: 'MedievalSharp', 'Cinzel', serif;
+}
+
+/* Math Monospace title — matching 𝚂𝚈𝙽𝚃𝙷𝙰𝚁𝙰2.0 style — used for hero & loading */
+.sf-script-title,
+.sf-gothic-title {
+  font-family: 'IBM Plex Mono', 'Oxanium', 'Courier New', monospace;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  line-height: 1.05;
+  filter: drop-shadow(0 4px 20px rgba(0,0,0,0.95));
+}
+
+/* ==========================================================================
+   HERO BACKGROUND LEFT-TO-RIGHT PAN ANIMATION
+   ========================================================================== */
+
+@keyframes bg-pan-lr {
+  0%   { transform: scale(1.12) translateX(-4%); }
+  50%  { transform: scale(1.12) translateX(4%); }
+  100% { transform: scale(1.12) translateX(-4%); }
+}
+
+.animate-bg-pan-lr {
+  animation: bg-pan-lr 28s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* ==========================================================================
+   GOTHIC MODAL & FORM STYLES
+   ========================================================================== */
+
+/* Gothic Modal Container */
+.sf-modal-gothic {
+  background: linear-gradient(160deg, rgba(12,16,24,0.98) 0%, rgba(8,10,16,0.99) 60%, rgba(5,7,12,1) 100%);
+  border: 1px solid rgba(212,175,55,0.45);
+  box-shadow:
+    0 0 0 1px rgba(212,175,55,0.12),
+    0 25px 80px rgba(0,0,0,0.95),
+    0 0 60px rgba(212,175,55,0.08),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+  backdrop-filter: blur(24px);
+}
+
+/* Gothic Modal Title Bar */
+.sf-modal-titlebar {
+  background: linear-gradient(90deg, rgba(212,175,55,0.15) 0%, rgba(212,175,55,0.08) 50%, rgba(212,175,55,0.15) 100%);
+  border-bottom: 1px solid rgba(212,175,55,0.3);
+}
+
+/* Gothic Input */
+.sf-input-gothic {
+  background: rgba(6,9,14,0.9);
+  border: 1px solid rgba(212,175,55,0.25);
+  color: #F5D061;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+  width: 100%;
+}
+
+.sf-input-gothic:focus {
+  border-color: rgba(212,175,55,0.7);
+  box-shadow: 0 0 0 2px rgba(212,175,55,0.1), inset 0 0 12px rgba(212,175,55,0.05);
+}
+
+.sf-input-gothic::placeholder {
+  color: rgba(148,163,184,0.4);
+}
+
+/* Gothic Label */
+.sf-label-gothic {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(212,175,55,0.75);
+  margin-bottom: 0.35rem;
+  display: block;
+}
+
+/* Gothic Step Pill */
+.sf-step-active {
+  background: linear-gradient(135deg, #D4AF37, #F5D061);
+  color: #0a0804;
+  font-family: 'Cinzel', serif;
+  font-weight: 900;
+}
+.sf-step-inactive {
+  background: rgba(212,175,55,0.1);
+  border: 1px solid rgba(212,175,55,0.3);
+  color: rgba(212,175,55,0.5);
+  font-family: 'Cinzel', serif;
+}
+
+/* ==========================================================================
+   BATTLEGROUNDS PAGE
+   ========================================================================== */
+
+.battlegrounds-card {
+  position: relative;
+  background: linear-gradient(160deg, rgba(14,18,28,0.95) 0%, rgba(8,11,18,0.98) 100%);
+  border: 1px solid rgba(212,175,55,0.2);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.04);
+  transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
+  overflow: hidden;
+}
+
+.battlegrounds-card:hover {
+  border-color: rgba(212,175,55,0.6);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.9), 0 0 30px rgba(212,175,55,0.15), inset 0 1px 0 rgba(255,255,255,0.08);
+  transform: translateY(-4px);
+}
+
+/* ==========================================================================
+   ADMIN PANEL SCROLLBARS
+   ========================================================================== */
+.custom-admin-scrollbar {
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(212, 175, 55, 0.6) #06090f !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+.custom-admin-scrollbar::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+  display: block !important;
+}
+
+.custom-admin-scrollbar::-webkit-scrollbar-track {
+  background: #06090f !important;
+  border-left: 1px solid rgba(212, 175, 55, 0.15) !important;
+}
+
+.custom-admin-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.45) !important;
+  border-radius: 4px !important;
+  border: 1px solid rgba(212, 175, 55, 0.7) !important;
+}
+
+.custom-admin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #F5D061 !important;
+  box-shadow: 0 0 10px rgba(245, 208, 97, 0.8) !important;
+}
+
+/* ==========================================================================
+   PARTNER HEADER TICKER & MARQUEE ANIMATION
+   ========================================================================== */
+@keyframes partnerMarquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-partner-marquee {
+  display: flex;
+  width: max-content;
+  animation: partnerMarquee 26s linear infinite;
+}
+
+.animate-partner-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* ==========================================================================
+   FEATURED SQUADS INFINITE MARQUEE (RIGHT TO LEFT)
+   ========================================================================== */
+@keyframes squadMarquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-squad-marquee {
+  display: flex;
+  width: max-content;
+  animation: squadMarquee 36s linear infinite;
+  will-change: transform;
+}
+
+.animate-squad-marquee:hover {
+  animation-play-state: paused;
+}
+
+

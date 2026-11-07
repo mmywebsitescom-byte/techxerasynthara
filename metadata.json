@@ -1,0 +1,8 @@
+{
+  "name": "Techxera Hackfest '26",
+  "description": "SYNTHARA2.0 edition by Codebreakers GCEK. Central & Eastern India's premier 24H state tech fest & hackathon with Shadow Arena background.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
