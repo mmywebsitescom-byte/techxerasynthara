@@ -16,10 +16,11 @@ export default function Footer() {
 
   const socials = [
     { name: 'DISCORD', href: footer.discord || 'https://discord.gg' },
+    { name: 'INSTAGRAM', href: footer.instagram || 'https://instagram.com' },
     { name: 'GITHUB', href: footer.github || 'https://github.com' },
     { name: 'TWITTER', href: footer.twitter || 'https://twitter.com' },
     { name: 'LINKEDIN', href: footer.linkedin || 'https://linkedin.com' },
-  ];
+  ].filter((item) => Boolean(item.href && item.href.trim()));
 
   return (
     <footer className="bg-[#121212] border-t-4 border-t-[#383838] py-12 px-4 sm:px-6 md:px-12 text-neutral-300 relative overflow-hidden select-none font-mono">
@@ -116,12 +117,31 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-neutral-500 gap-2">
+        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-neutral-500 gap-3 border-t border-[#222222]">
           <div>
             {footer.copyright && !footer.copyright.includes("HACKVERSE") ? footer.copyright : '© 2026 SYNTHARA2.0 // CODEBREAKERS CLUB GCEK. ALL RIGHTS RESERVED.'}
           </div>
-          <div className="text-[11px] text-neutral-400">
-            CRAFTED WITH PRECISION FOR BUILDERS
+
+          {/* Right Side: Powered by: Raghab Barik, clickable to destination link */}
+          <div className="flex items-center gap-1.5 font-mono text-xs text-right">
+            <span className="text-[11px] text-neutral-400 font-bold tracking-wider">
+              {footer.poweredByPrefix !== undefined && footer.poweredByPrefix !== '' ? footer.poweredByPrefix : 'Powered by:'}
+            </span>
+            {footer.poweredByUrl ? (
+              <a
+                href={footer.poweredByUrl.startsWith('http://') || footer.poweredByUrl.startsWith('https://') ? footer.poweredByUrl : `https://${footer.poweredByUrl}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-bold text-[#FFAA00] hover:text-[#55FF55] transition-colors underline decoration-[#FFAA00]/40 hover:decoration-[#55FF55] tracking-wide"
+                title={`Visit ${footer.poweredByName || 'Raghab Barik'}`}
+              >
+                {footer.poweredByName || 'Raghab Barik'}
+              </a>
+            ) : (
+              <span className="font-bold text-[#FFAA00] tracking-wide">
+                {footer.poweredByName || 'Raghab Barik'}
+              </span>
+            )}
           </div>
         </div>
       </div>

@@ -118,7 +118,7 @@ export default function Mission() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-3 shrink-0 w-full sm:w-auto">
             <a
               href={String(mission.communityUrl || "https://codebreakersgcek.tech")}
               target="_blank"
@@ -135,6 +135,18 @@ export default function Mission() {
             >
               <span>{String(mission.communityScheduleBtnLabel || "VIEW SCHEDULE")}</span>
             </a>
+
+            {Boolean(mission.communityInstagramUrl) && (
+              <a
+                href={String(mission.communityInstagramUrl)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full sm:w-auto px-5 py-3 bg-[#C13584] hover:bg-[#E1306C] text-white font-mono font-black text-xs uppercase tracking-wider border-3 border-t-[#f56040] border-l-[#f56040] border-r-[#833ab4] border-b-[#833ab4] shadow-[2px_2px_0px_#000] [text-shadow:_1px_1px_0_#000] flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span>INSTAGRAM</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
           </div>
         </div>
       </div>

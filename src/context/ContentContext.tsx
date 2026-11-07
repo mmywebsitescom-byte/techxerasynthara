@@ -78,6 +78,7 @@ export interface SiteContent {
     communityUrl?: string;
     communityScheduleBtnLabel?: string;
     communityScheduleUrl?: string;
+    communityInstagramUrl?: string;
     [key: string]: unknown;
   };
   stats: {
@@ -142,6 +143,10 @@ export interface SiteContent {
     github?: string;
     twitter?: string;
     linkedin?: string;
+    instagram?: string;
+    poweredByName?: string;
+    poweredByUrl?: string;
+    poweredByPrefix?: string;
     [key: string]: unknown;
   };
   registrationForm?: {
@@ -354,7 +359,11 @@ export const initialFallbackContent: SiteContent = {
     discord: "https://discord.gg",
     github: "https://github.com",
     twitter: "https://twitter.com",
-    linkedin: "https://linkedin.com"
+    linkedin: "https://linkedin.com",
+    instagram: "https://instagram.com",
+    poweredByName: "Raghab Barik",
+    poweredByUrl: "https://raghabportfolio.in",
+    poweredByPrefix: "Powered by:"
   },
   registrationForm: {
     isOpen: true,

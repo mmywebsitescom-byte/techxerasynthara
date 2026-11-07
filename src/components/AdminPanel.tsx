@@ -3484,6 +3484,25 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                       className="w-full bg-[#111722] border border-[#D4AF37]/30 text-white p-2 text-xs font-mono focus:border-[#D4AF37] outline-none"
                     />
                   </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block font-rajdhani text-xs font-bold text-[#E1306C] uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                      <span>Community Instagram Link (Optional Extra Button)</span>
+                      <span className="text-[10px] text-[#55FF55]">(NEW)</span>
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="https://instagram.com/yourclub"
+                      value={mission.communityInstagramUrl || ""}
+                      onChange={(e) =>
+                        setEditData({
+                          ...editData,
+                          mission: { ...mission, communityInstagramUrl: e.target.value },
+                        })
+                      }
+                      className="w-full bg-[#111722] border border-[#E1306C]/40 text-white p-2 text-xs font-mono focus:border-[#E1306C] outline-none"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -6304,6 +6323,24 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                   />
                 </div>
                 <div>
+                  <label className="block font-rajdhani text-xs font-bold text-[#E1306C] uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                    <span>Instagram Community Link</span>
+                    <span className="text-[10px] text-[#55FF55]">(NEW)</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="https://instagram.com/techxera"
+                    value={footer.instagram || ""}
+                    onChange={(e) =>
+                      setEditData({
+                        ...editData,
+                        footer: { ...footer, instagram: e.target.value },
+                      })
+                    }
+                    className="w-full bg-[#111722] border border-[#E1306C]/40 text-white p-2 text-xs font-mono focus:border-[#E1306C] outline-none"
+                  />
+                </div>
+                <div>
                   <label className="block font-rajdhani text-xs font-bold text-[#F5D061] uppercase tracking-wider mb-1">
                     GitHub Link
                   </label>
@@ -6335,7 +6372,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                     className="w-full bg-[#111722] border border-[#D4AF37]/30 text-white p-2 text-xs font-mono"
                   />
                 </div>
-                <div>
+                <div className="sm:col-span-2">
                   <label className="block font-rajdhani text-xs font-bold text-[#F5D061] uppercase tracking-wider mb-1">
                     LinkedIn Link
                   </label>
@@ -6350,6 +6387,99 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                     }
                     className="w-full bg-[#111722] border border-[#D4AF37]/30 text-white p-2 text-xs font-mono"
                   />
+                </div>
+              </div>
+
+              {/* Right Side Footer Credit & Link Editor (Last Page / Footer) */}
+              <div className="p-5 border-2 border-[#D4AF37]/50 bg-gradient-to-br from-[#141b26] via-[#0c1017] to-[#141b26] sf-clip-angled-sm space-y-4 mt-6 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+                <div className="border-b border-[#D4AF37]/25 pb-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h4 className="font-cinzel text-sm font-bold text-[#F5D061] uppercase tracking-wider flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-[#55FF55]" />
+                      <span>Right Side Footer Credit (Last Page)</span>
+                    </h4>
+                    <p className="font-rajdhani text-xs text-neutral-400 mt-0.5">
+                      Moved to the bottom right side. Only the name is shown on the website — the link is hidden behind the click.
+                    </p>
+                  </div>
+                  <span className="px-2.5 py-1 bg-[#55FF55]/15 border border-[#55FF55]/40 text-[#55FF55] font-mono text-[10px] font-bold uppercase shrink-0">
+                    LIVE ON SITE (RIGHT SIDE)
+                  </span>
+                </div>
+
+                {/* Live Preview Box */}
+                <div className="p-3 bg-[#111] border border-neutral-700 sf-clip-angled-sm flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono">
+                  <span className="text-neutral-400 text-[11px] uppercase">Live Website Bottom-Right Corner Preview:</span>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#181818] border border-[#FFAA00]/40 shadow-[2px_2px_0px_#000]">
+                    <span className="text-[10px] text-neutral-400 font-bold tracking-wider">
+                      {footer.poweredByPrefix !== undefined && footer.poweredByPrefix !== '' ? footer.poweredByPrefix : 'Powered by:'}
+                    </span>
+                    <span className="font-bold text-[#FFAA00] underline decoration-[#FFAA00]/50 cursor-pointer">
+                      {footer.poweredByName || "Raghab Barik"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block font-rajdhani text-xs font-bold text-[#55FF55] uppercase tracking-wider mb-1">
+                      Display Name * (Only this text is shown on right side)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Raghab Barik"
+                      value={footer.poweredByName ?? "Raghab Barik"}
+                      onChange={(e) =>
+                        setEditData({
+                          ...editData,
+                          footer: { ...footer, poweredByName: e.target.value },
+                        })
+                      }
+                      className="w-full bg-[#111722] border border-[#55FF55]/50 text-white p-2.5 text-sm font-rajdhani focus:border-[#55FF55] outline-none font-bold"
+                    />
+                    <span className="font-rajdhani text-[11px] text-neutral-400 mt-1 block">
+                      Visible on the right side of the last page as: <strong className="text-[#FFAA00]">{footer.poweredByName || "Raghab Barik"}</strong>
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block font-rajdhani text-xs font-bold text-[#F5D061] uppercase tracking-wider mb-1">
+                      Destination Portfolio / Website Link (Hidden behind the name)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="https://raghabportfolio.in"
+                      value={footer.poweredByUrl ?? "https://raghabportfolio.in"}
+                      onChange={(e) =>
+                        setEditData({
+                          ...editData,
+                          footer: { ...footer, poweredByUrl: e.target.value },
+                        })
+                      }
+                      className="w-full bg-[#111722] border border-[#D4AF37]/35 text-white p-2.5 text-sm font-mono focus:border-[#D4AF37] outline-none"
+                    />
+                    <span className="font-rajdhani text-[11px] text-neutral-400 mt-1 block">
+                      Visitors will not see this URL text; clicking the name opens this URL.
+                    </span>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block font-rajdhani text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1">
+                      Prefix Label (Default: "Powered by:")
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Powered by:"
+                      value={footer.poweredByPrefix ?? "Powered by:"}
+                      onChange={(e) =>
+                        setEditData({
+                          ...editData,
+                          footer: { ...footer, poweredByPrefix: e.target.value },
+                        })
+                      }
+                      className="w-full bg-[#111722] border border-[#D4AF37]/20 text-white p-2 text-xs font-mono focus:border-[#D4AF37] outline-none"
+                    />
+                  </div>
                 </div>
               </div>
 
