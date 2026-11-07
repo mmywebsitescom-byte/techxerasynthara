@@ -49,6 +49,47 @@ type Section =
 const API_BASE = "/api";
 const TOKEN_KEY = "hv26_admin_token";
 
+function formatExternalUrl(url?: string, platform?: string): string {
+  if (!url || !url.trim()) return '';
+  const trimmed = url.trim();
+
+  // If already starts with http:// or https://
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  // If starts with //
+  if (trimmed.startsWith('//')) {
+    return `https:${trimmed}`;
+  }
+
+  // Handle '@username'
+  if (trimmed.startsWith('@')) {
+    const handle = trimmed.substring(1);
+    if (platform === 'INSTAGRAM') return `https://instagram.com/${handle}`;
+    if (platform === 'TWITTER') return `https://x.com/${handle}`;
+    if (platform === 'GITHUB') return `https://github.com/${handle}`;
+    if (platform === 'LINKEDIN') return `https://linkedin.com/in/${handle}`;
+  }
+
+  // If starts with domain names like instagram.com, github.com, etc.
+  if (/^(www\.)?(instagram\.com|github\.com|twitter\.com|x\.com|linkedin\.com|discord\.gg|discord\.com)/i.test(trimmed)) {
+    return `https://${trimmed}`;
+  }
+
+  // If user just typed their username/handle (e.g. 'techxera' or 'codebreakers')
+  if (!trimmed.includes('.') && !trimmed.includes('/')) {
+    if (platform === 'INSTAGRAM') return `https://instagram.com/${trimmed}`;
+    if (platform === 'TWITTER') return `https://x.com/${trimmed}`;
+    if (platform === 'GITHUB') return `https://github.com/${trimmed}`;
+    if (platform === 'LINKEDIN') return `https://linkedin.com/in/${trimmed}`;
+    if (platform === 'DISCORD') return `https://discord.gg/${trimmed}`;
+  }
+
+  // Fallback: prepend https://
+  return `https://${trimmed}`;
+}
+
 export default function AdminPanel({ onClose }: AdminPanelProps) {
   const { refreshContent } = useSiteContent();
   const [token, setToken] = useState<string | null>(() => sessionStorage.getItem(TOKEN_KEY));
@@ -6485,7 +6526,22 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
 
               <div className="pt-2">
                 <button
-                  onClick={() => handleSaveSection("footer", editData.footer)}
+                  onClick={() => {
+                    const f = editData.footer || {};
+                    const cleanedFooter = {
+                      ...f,
+                      discord: f.discord?.trim() ? formatExternalUrl(f.discord, 'DISCORD') : '',
+                      instagram: f.instagram?.trim() ? formatExternalUrl(f.instagram, 'INSTAGRAM') : '',
+                      github: f.github?.trim() ? formatExternalUrl(f.github, 'GITHUB') : '',
+                      twitter: f.twitter?.trim() ? formatExternalUrl(f.twitter, 'TWITTER') : '',
+                      linkedin: f.linkedin?.trim() ? formatExternalUrl(f.linkedin, 'LINKEDIN') : '',
+                      poweredByUrl: f.poweredByUrl?.trim() ? formatExternalUrl(f.poweredByUrl) : '',
+                      poweredByName: f.poweredByName?.trim() || 'Raghab Barik',
+                      poweredByPrefix: f.poweredByPrefix !== undefined ? f.poweredByPrefix : 'Powered by:',
+                    };
+                    setEditData({ ...editData, footer: cleanedFooter });
+                    handleSaveSection("footer", cleanedFooter);
+                  }}
                   className="px-6 py-2.5 sf-btn-gold sf-clip-angled font-cinzel text-xs font-bold tracking-[0.2em] uppercase flex items-center gap-2 cursor-pointer"
                 >
                   <Save className="w-4 h-4" />

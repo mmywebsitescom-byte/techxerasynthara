@@ -2,6 +2,47 @@ import { Mail, MapPin, Calendar, ArrowUp } from 'lucide-react';
 import { useSiteContent } from '../context/ContentContext';
 import SkeletonImage from './SkeletonImage';
 
+function formatExternalUrl(url?: string, platform?: string): string {
+  if (!url || !url.trim()) return '';
+  const trimmed = url.trim();
+
+  // If already starts with http:// or https://
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  // If starts with //
+  if (trimmed.startsWith('//')) {
+    return `https:${trimmed}`;
+  }
+
+  // Handle '@username'
+  if (trimmed.startsWith('@')) {
+    const handle = trimmed.substring(1);
+    if (platform === 'INSTAGRAM') return `https://instagram.com/${handle}`;
+    if (platform === 'TWITTER') return `https://x.com/${handle}`;
+    if (platform === 'GITHUB') return `https://github.com/${handle}`;
+    if (platform === 'LINKEDIN') return `https://linkedin.com/in/${handle}`;
+  }
+
+  // If starts with domain names like instagram.com, github.com, etc.
+  if (/^(www\.)?(instagram\.com|github\.com|twitter\.com|x\.com|linkedin\.com|discord\.gg|discord\.com)/i.test(trimmed)) {
+    return `https://${trimmed}`;
+  }
+
+  // If user just typed their username/handle (e.g. 'techxera' or 'codebreakers')
+  if (!trimmed.includes('.') && !trimmed.includes('/')) {
+    if (platform === 'INSTAGRAM') return `https://instagram.com/${trimmed}`;
+    if (platform === 'TWITTER') return `https://x.com/${trimmed}`;
+    if (platform === 'GITHUB') return `https://github.com/${trimmed}`;
+    if (platform === 'LINKEDIN') return `https://linkedin.com/in/${trimmed}`;
+    if (platform === 'DISCORD') return `https://discord.gg/${trimmed}`;
+  }
+
+  // Fallback: prepend https://
+  return `https://${trimmed}`;
+}
+
 export default function Footer() {
   const { content } = useSiteContent();
   const footer = content?.footer || {};
@@ -15,12 +56,14 @@ export default function Footer() {
   };
 
   const socials = [
-    { name: 'DISCORD', href: footer.discord || 'https://discord.gg' },
-    { name: 'INSTAGRAM', href: footer.instagram || 'https://instagram.com' },
-    { name: 'GITHUB', href: footer.github || 'https://github.com' },
-    { name: 'TWITTER', href: footer.twitter || 'https://twitter.com' },
-    { name: 'LINKEDIN', href: footer.linkedin || 'https://linkedin.com' },
+    { name: 'DISCORD', href: formatExternalUrl(footer.discord || 'https://discord.gg', 'DISCORD') },
+    { name: 'INSTAGRAM', href: formatExternalUrl(footer.instagram || 'https://instagram.com', 'INSTAGRAM') },
+    { name: 'GITHUB', href: formatExternalUrl(footer.github || 'https://github.com', 'GITHUB') },
+    { name: 'TWITTER', href: formatExternalUrl(footer.twitter || 'https://twitter.com', 'TWITTER') },
+    { name: 'LINKEDIN', href: formatExternalUrl(footer.linkedin || 'https://linkedin.com', 'LINKEDIN') },
   ].filter((item) => Boolean(item.href && item.href.trim()));
+
+  const formattedPoweredByUrl = formatExternalUrl(footer.poweredByUrl || 'https://raghabportfolio.in');
 
   return (
     <footer className="bg-[#121212] border-t-4 border-t-[#383838] py-12 px-4 sm:px-6 md:px-12 text-neutral-300 relative overflow-hidden select-none font-mono">
@@ -127,9 +170,9 @@ export default function Footer() {
             <span className="text-[11px] text-neutral-400 font-bold tracking-wider">
               {footer.poweredByPrefix !== undefined && footer.poweredByPrefix !== '' ? footer.poweredByPrefix : 'Powered by:'}
             </span>
-            {footer.poweredByUrl ? (
+            {formattedPoweredByUrl ? (
               <a
-                href={footer.poweredByUrl.startsWith('http://') || footer.poweredByUrl.startsWith('https://') ? footer.poweredByUrl : `https://${footer.poweredByUrl}`}
+                href={formattedPoweredByUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-bold text-[#FFAA00] hover:text-[#55FF55] transition-colors underline decoration-[#FFAA00]/40 hover:decoration-[#55FF55] tracking-wide"
