@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Camera, X, ChevronLeft, Image } from 'lucide-react';
 import { GalleryItem } from '../types';
 import { useSiteContent } from '../context/ContentContext';
+import SkeletonImage from './SkeletonImage';
 
 interface GalleryPageProps {
   onBack: () => void;
@@ -130,13 +131,14 @@ export default function GalleryPage({ onBack }: GalleryPageProps) {
                 className="bg-[#2B2B2B] border-4 border-t-[#4a4a4a] border-l-[#4a4a4a] border-r-[#151515] border-b-[#151515] p-3 shadow-[4px_4px_0px_#000] cursor-pointer hover:-translate-y-1 transition-transform group"
               >
                 <div className="relative h-48 sm:h-56 overflow-hidden bg-black border-2 border-black">
-                  <img
+                  <SkeletonImage
                     src={item.image}
                     alt={item.title}
+                    wrapperClassName="w-full h-full"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     loading="lazy"
                   />
-                  <div className="absolute top-2 left-2 bg-[#FFAA00] text-black font-mono font-black text-[10px] px-2 py-0.5 border border-black shadow-[1px_1px_0_#000]">
+                  <div className="absolute top-2 left-2 z-20 bg-[#FFAA00] text-black font-mono font-black text-[10px] px-2 py-0.5 border border-black shadow-[1px_1px_0_#000]">
                     {item.category}
                   </div>
                 </div>
@@ -179,10 +181,11 @@ export default function GalleryPage({ onBack }: GalleryPageProps) {
                 </button>
               </div>
               <div className="p-3">
-                <img
+                <SkeletonImage
                   src={lightboxItem.image}
                   alt={lightboxItem.title}
                   className="w-full max-h-[65vh] object-cover border-2 border-black"
+                  containerClassName="w-full max-h-[65vh] min-h-[240px]"
                 />
                 <p className="font-mono text-xs text-neutral-900 mt-2.5 font-medium">{lightboxItem.caption}</p>
               </div>

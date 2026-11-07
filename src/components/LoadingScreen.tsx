@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Volume2, VolumeX } from 'lucide-react';
 import { useSiteContent } from '../context/ContentContext';
 import { useAudio } from '../context/AudioContext';
+import SkeletonImage from './SkeletonImage';
 
 interface LoadingScreenProps {
   onComplete: () => void;
@@ -212,16 +213,18 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
                 className="relative mb-6"
               >
                 {(ls.logoUrl && String(ls.logoUrl).trim()) ? (
-                  <img
+                  <SkeletonImage
                     src={String(ls.logoUrl)}
-                    alt="Hackverse Logo"
+                    alt="SYNTHARA2.0 Logo"
                     className="w-28 h-28 object-contain drop-shadow-[0_0_30px_rgba(212,175,55,0.35)]"
+                    containerClassName="w-28 h-28 flex items-center justify-center"
                   />
                 ) : (content?.navbar?.siteLogoUrl && !ls.logoUrlDeleted) ? (
-                  <img
+                  <SkeletonImage
                     src={String(content.navbar.siteLogoUrl)}
-                    alt="Hackverse Logo"
+                    alt="SYNTHARA2.0 Logo"
                     className="w-28 h-28 object-contain drop-shadow-[0_0_30px_rgba(212,175,55,0.35)]"
+                    containerClassName="w-28 h-28 flex items-center justify-center"
                   />
                 ) : (
                   <span

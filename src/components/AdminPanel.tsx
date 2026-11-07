@@ -3886,10 +3886,24 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
               const finalSum = activeBattlePrizes.reduce((acc, bp) => acc + parsePrizeValue(bp.prizeAmount), 0);
               const finalTotalFormatted = formatPrizeCurrency(finalSum);
 
+              const currentTotal = prizes.poolTotal || (finalSum > 0 ? finalTotalFormatted : "₹8,000");
+              const currentDesc = (prizes.description || prizes.bannerDesc || "The grand bounty of SYNTHARA2.0. Sum of all individual track combat pools with direct cash wires, official SYNTHARA2.0 champion trophies, compute grants, and direct investor screening.")
+                .replace(/HackVerse\s*('?26)?/gi, "SYNTHARA2.0");
+
               const updatedPrizes = {
                 ...prizes,
                 battlePrizes: activeBattlePrizes,
-                poolTotal: prizes.poolTotal || finalTotalFormatted,
+                poolTotal: currentTotal,
+                bannerBadge: prizes.bannerBadge || "AGGREGATE STATE CHAMPION POOL",
+                bonusTag: prizes.bonusTag || "+ VC INCUBATION",
+                description: currentDesc,
+                bannerDesc: currentDesc,
+                perk1: prizes.perk1 || `${currentTotal} Cumulative Bounty Pool`,
+                perk2: prizes.perk2 || "Cloud Compute Clusters & Grant Wire",
+                perk3: prizes.perk3 || "Direct VC Term-Sheet Screening",
+                perk4: prizes.perk4 || "Official Gold Trophies & Custom Badges",
+                trophyBoxTitle: prizes.trophyBoxTitle || "GRAND TOTAL",
+                trophyBoxSubtitle: prizes.trophyBoxSubtitle || `${activeBattlePrizes.length || 1} BATTLE TRACKS`,
               };
 
               const updatedAll = {
@@ -3898,11 +3912,11 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                 challenges: editData.challenges,
                 stats: {
                   ...(editData.stats || {}),
-                  prizePool: prizes.poolTotal || finalTotalFormatted,
+                  prizePool: currentTotal,
                 },
                 eventInfo: {
                   ...(editData.eventInfo || {}),
-                  prizePool: prizes.poolTotal || finalTotalFormatted,
+                  prizePool: currentTotal,
                 },
               };
 
@@ -3958,13 +3972,17 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
 
             const handleSaveBannerSettings = async () => {
               const currentTotal = prizes.poolTotal || (computedTotalSum > 0 ? computedTotalFormatted : "₹8,000");
+              const currentDesc = (prizes.description || prizes.bannerDesc || "The grand bounty of SYNTHARA2.0. Sum of all individual track combat pools with direct cash wires, official SYNTHARA2.0 champion trophies, compute grants, and direct investor screening.")
+                .replace(/HackVerse\s*('?26)?/gi, "SYNTHARA2.0");
+
               const updatedPrizes = {
                 ...prizes,
+                battlePrizes: activeBattlePrizes,
                 poolTotal: currentTotal,
                 bannerBadge: prizes.bannerBadge || "AGGREGATE STATE CHAMPION POOL",
                 bonusTag: prizes.bonusTag || "+ VC INCUBATION",
-                description: prizes.description || "The grand bounty of SYNTHARA2.0. Sum of all individual track combat pools with direct cash wires, official SYNTHARA2.0 champion trophies, compute grants, and direct investor screening.",
-                bannerDesc: prizes.description || "The grand bounty of SYNTHARA2.0. Sum of all individual track combat pools with direct cash wires, official SYNTHARA2.0 champion trophies, compute grants, and direct investor screening.",
+                description: currentDesc,
+                bannerDesc: currentDesc,
                 perk1: prizes.perk1 || `${currentTotal} Cumulative Bounty Pool`,
                 perk2: prizes.perk2 || "Cloud Compute Clusters & Grant Wire",
                 perk3: prizes.perk3 || "Direct VC Term-Sheet Screening",
@@ -4142,7 +4160,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                       </label>
                       <input
                         type="text"
-                        value={prizes.bannerBadge || ""}
+                        value={prizes.bannerBadge ?? "AGGREGATE STATE CHAMPION POOL"}
                         onChange={(e) =>
                           setEditData({
                             ...editData,
@@ -4194,7 +4212,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                       </label>
                       <input
                         type="text"
-                        value={prizes.bonusTag || ""}
+                        value={prizes.bonusTag ?? "+ VC INCUBATION"}
                         onChange={(e) =>
                           setEditData({
                             ...editData,
@@ -4213,7 +4231,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                       </label>
                       <textarea
                         rows={3}
-                        value={prizes.description || ""}
+                        value={prizes.description ?? "The grand bounty of SYNTHARA2.0. Sum of all individual track combat pools with direct cash wires, official SYNTHARA2.0 champion trophies, compute grants, and direct investor screening."}
                         onChange={(e) =>
                           setEditData({
                             ...editData,
@@ -4232,14 +4250,14 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                       </label>
                       <input
                         type="text"
-                        value={prizes.perk1 || ""}
+                        value={prizes.perk1 ?? `${prizes.poolTotal || computedTotalFormatted} Cumulative Bounty Pool`}
                         onChange={(e) =>
                           setEditData({
                             ...editData,
                             prizes: { ...prizes, perk1: e.target.value },
                           })
                         }
-                        placeholder="Leave blank for auto total: ₹8,000 Cumulative Bounty Pool"
+                        placeholder="₹8,000 Cumulative Bounty Pool"
                         className="w-full bg-[#111722] border border-[#D4AF37]/40 text-white p-2 text-xs font-mono focus:border-[#D4AF37] outline-none"
                       />
                     </div>
@@ -4251,7 +4269,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                       </label>
                       <input
                         type="text"
-                        value={prizes.perk2 || ""}
+                        value={prizes.perk2 ?? "Cloud Compute Clusters & Grant Wire"}
                         onChange={(e) =>
                           setEditData({
                             ...editData,
@@ -4270,7 +4288,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                       </label>
                       <input
                         type="text"
-                        value={prizes.perk3 || ""}
+                        value={prizes.perk3 ?? "Direct VC Term-Sheet Screening"}
                         onChange={(e) =>
                           setEditData({
                             ...editData,
@@ -4289,7 +4307,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                       </label>
                       <input
                         type="text"
-                        value={prizes.perk4 || ""}
+                        value={prizes.perk4 ?? "Official Gold Trophies & Custom Badges"}
                         onChange={(e) =>
                           setEditData({
                             ...editData,
@@ -4308,7 +4326,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                       </label>
                       <input
                         type="text"
-                        value={prizes.trophyBoxTitle || ""}
+                        value={prizes.trophyBoxTitle ?? "GRAND TOTAL"}
                         onChange={(e) =>
                           setEditData({
                             ...editData,
@@ -4327,7 +4345,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                       </label>
                       <input
                         type="text"
-                        value={prizes.trophyBoxSubtitle || ""}
+                        value={prizes.trophyBoxSubtitle ?? `${activeBattlePrizes.length || 1} BATTLE TRACKS`}
                         onChange={(e) =>
                           setEditData({
                             ...editData,

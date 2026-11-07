@@ -81,6 +81,18 @@ function MainApp() {
     };
   }, []);
 
+  // Dynamically sync browser tab favicon with Techxera site logo
+  useEffect(() => {
+    const logoUrl = content.navbar?.siteLogoUrl || '/favicon.png';
+    let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    link.href = String(logoUrl);
+  }, [content.navbar?.siteLogoUrl]);
+
   // When Admin Panel is opened, stop Lenis completely to ensure native scrolling
   useEffect(() => {
     if (showAdmin) {

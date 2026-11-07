@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Menu, X, Swords, Camera, Phone } from 'lucide-react';
 import { useSiteContent } from '../context/ContentContext';
+import SkeletonImage from './SkeletonImage';
 
 interface NavbarProps {
   onOpenRegister: () => void;
@@ -73,13 +74,11 @@ export default function Navbar({ onOpenRegister, activeSection, onOpenBattlegrou
                 const partnerItem = (
                   <div className="flex items-center gap-2 group/partner py-0.5 cursor-pointer">
                     {partner.logoUrl ? (
-                      <img
+                      <SkeletonImage
                         src={partner.logoUrl}
                         alt={partner.name}
                         className="h-4 sm:h-5 max-w-[120px] object-contain transition-all duration-300"
-                        onError={(e) => {
-                          (e.target as HTMLElement).style.display = 'none';
-                        }}
+                        containerClassName="h-4 sm:h-5 max-w-[120px] min-w-[24px]"
                       />
                     ) : null}
                     <span className="font-rajdhani font-bold text-[11px] sm:text-xs tracking-wider text-gray-700 group-hover/partner:text-gray-900 transition-colors whitespace-nowrap">
@@ -127,10 +126,11 @@ export default function Navbar({ onOpenRegister, activeSection, onOpenBattlegrou
           >
             <div className="relative shrink-0 flex items-center justify-center">
               {navbar.siteLogoUrl ? (
-                <img
+                <SkeletonImage
                   src={String(navbar.siteLogoUrl)}
                   alt="Site Logo"
                   className="w-11 h-11 sm:w-12 sm:h-12 object-contain drop-shadow-[0_0_10px_rgba(212,175,55,0.3)]"
+                  containerClassName="w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center"
                 />
               ) : (
                 <Swords className="w-7 h-7 sm:w-8 sm:h-8 text-[#F5D061] group-hover:rotate-45 group-hover:scale-110 transition-all duration-300" />

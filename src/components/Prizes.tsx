@@ -41,9 +41,9 @@ export default function Prizes() {
   // Dynamic Aggregate Banner Customization
   const bannerBadge = String(prizes.bannerBadge || 'AGGREGATE STATE CHAMPION POOL');
   const bonusTag = String(prizes.bonusTag || '+ VC INCUBATION');
-  const descCandidate = String(prizes.description || prizes.bannerDesc || '');
-  const bannerDesc = descCandidate && !descCandidate.includes("HackVerse '26")
-    ? descCandidate
+  const rawDesc = String(prizes.description || prizes.bannerDesc || '');
+  const bannerDesc = rawDesc
+    ? rawDesc.replace(/HackVerse\s*('?26)?/gi, 'SYNTHARA2.0')
     : "The grand bounty of SYNTHARA2.0. Sum of all individual track combat pools with direct cash wires, official SYNTHARA2.0 champion trophies, compute grants, and direct investor screening.";
 
   const perk1 = String(prizes.perk1 || `${totalPrizePool} Cumulative Bounty Pool`);

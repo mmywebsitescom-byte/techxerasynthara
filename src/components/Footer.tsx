@@ -1,5 +1,6 @@
 import { Mail, MapPin, Calendar, ArrowUp } from 'lucide-react';
 import { useSiteContent } from '../context/ContentContext';
+import SkeletonImage from './SkeletonImage';
 
 export default function Footer() {
   const { content } = useSiteContent();
@@ -29,10 +30,11 @@ export default function Footer() {
             <div className="flex items-center gap-2.5">
               <div className="shrink-0 flex items-center justify-center">
                 {content?.navbar?.siteLogoUrl ? (
-                  <img
+                  <SkeletonImage
                     src={String(content.navbar.siteLogoUrl)}
-                    alt="Hackverse Logo"
+                    alt="SYNTHARA2.0 Logo"
                     className="w-12 h-12 object-contain drop-shadow-[0_0_8px_rgba(255,170,0,0.25)]"
+                    containerClassName="w-12 h-12 flex items-center justify-center"
                   />
                 ) : (
                   <span className="font-mono font-black text-sm text-[#FFAA00]">HV</span>

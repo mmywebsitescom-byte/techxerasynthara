@@ -3,6 +3,7 @@ import { AnimatePresence, motion, useScroll, useTransform } from 'motion/react';
 import { Shield, X, ExternalLink, Sparkles, Lock } from 'lucide-react';
 import { useSiteContent } from '../context/ContentContext';
 import { Partner } from '../types';
+import SkeletonImage from './SkeletonImage';
 
 export default function Partners() {
   const { content } = useSiteContent();
@@ -164,10 +165,11 @@ export default function Partners() {
                   {/* Logo Box */}
                   <div className="w-full h-24 bg-white border-2 border-gray-200 p-3 flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.12)] my-3 rounded-sm">
                     {partner.logoUrl ? (
-                      <img
+                      <SkeletonImage
                         src={partner.logoUrl}
                         alt={partner.name}
                         className="max-h-16 max-w-[85%] object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.15)]"
+                        containerClassName="h-16 w-full flex items-center justify-center"
                       />
                     ) : (
                       <span className="font-mono font-black text-xl text-[#55FF55] tracking-wider uppercase [text-shadow:_1px_1px_0_#000]">

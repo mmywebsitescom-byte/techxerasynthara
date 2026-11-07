@@ -540,4 +540,30 @@
   animation-play-state: paused;
 }
 
+/* ==========================================================================
+   SKELETON SHIMMER LOADING ANIMATION
+   ========================================================================== */
+@keyframes skeletonShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(14, 18, 25, 0.95) 0%,
+    rgba(25, 33, 46, 0.98) 25%,
+    rgba(212, 175, 55, 0.18) 50%,
+    rgba(25, 33, 46, 0.98) 75%,
+    rgba(14, 18, 25, 0.95) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.8s ease-in-out infinite;
+}
+
+
 
