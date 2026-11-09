@@ -451,7 +451,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
         [sectionKey]: data,
         ...(sectionKey === 'yourTeam' ? {
           yourTeamCategories: teamCategoriesList,
-          yourTeamLocked: isTeamLocked,
+          yourTeamLocked: Boolean(editData.yourTeamLocked ?? isTeamLocked),
           yourTeamLockedMessage: teamLockedMessage
         } : {})
       };
@@ -1100,6 +1100,55 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
       setEditData({ ...editData, yourTeamCategories: updated });
     }
     setNewCategoryInput("");
+  };
+
+  const handleToggleTeamLock = async (nextLocked: boolean) => {
+    setSaveStatus("saving");
+    const updatedControl = {
+      ...eventControlData,
+      yourTeamLocked: nextLocked,
+      yourTeamLockedMessage: teamLockedMessage
+    };
+    const updatedEdit = {
+      ...editData,
+      yourTeamLocked: nextLocked,
+      yourTeamCategories: teamCategoriesList,
+      eventControl: updatedControl
+    };
+    setEditData(updatedEdit);
+
+    try {
+      await supabase
+        .from('site_content')
+        .upsert({
+          id: 'hackverse_2026',
+          content: updatedEdit,
+          updated_at: new Date().toISOString()
+        });
+    } catch (sbErr) {
+      console.warn("Direct site_content team lock update:", sbErr);
+    }
+
+    try {
+      await fetch(`${API_BASE}/admin/content/yourTeam`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          yourTeam: yourTeamList,
+          yourTeamCategories: teamCategoriesList,
+          yourTeamLocked: nextLocked,
+          yourTeamLockedMessage: teamLockedMessage
+        })
+      });
+      await fetch(`${API_BASE}/admin/content/eventControl`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(updatedControl)
+      });
+    } catch (err) {
+      console.warn("API team lock save notice:", err);
+    }
+    setSaveStatus("idle");
   };
   const faq: any[] = Array.isArray(editData.faq) ? editData.faq : [];
   const partners: any[] = Array.isArray(editData.partners)
@@ -1750,21 +1799,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                   </div>
                   <button
                     type="button"
-                    onClick={async () => {
-                      const nextLocked = !isTeamLocked;
-                      const updatedControl = {
-                        ...eventControlData,
-                        yourTeamLocked: nextLocked,
-                        yourTeamLockedMessage: teamLockedMessage
-                      };
-                      const updatedEdit = {
-                        ...editData,
-                        yourTeamLocked: nextLocked,
-                        eventControl: updatedControl
-                      };
-                      setEditData(updatedEdit);
-                      await handleSaveSection("eventControl", updatedControl);
-                    }}
+                    onClick={() => handleToggleTeamLock(!isTeamLocked)}
                     className={`shrink-0 px-5 py-2.5 font-cinzel text-xs font-black uppercase tracking-wider border sf-clip-angled-sm flex items-center gap-2 transition-all cursor-pointer ${
                       isTeamLocked
                         ? "bg-[#FF4655]/15 border-[#FF4655] text-[#FF4655]"
@@ -5936,34 +5971,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                   {/* DIRECT LOCK BUTTON */}
                   <button
                     type="button"
-                    onClick={async () => {
-                      const nextLocked = !isTeamLocked;
-                      const updatedControl = {
-                        ...eventControlData,
-                        yourTeamLocked: nextLocked,
-                        yourTeamLockedMessage: teamLockedMessage
-                      };
-                      const updatedEdit = {
-                        ...editData,
-                        yourTeamLocked: nextLocked,
-                        eventControl: updatedControl
-                      };
-                      setEditData(updatedEdit);
-
-                      await handleSaveSection("yourTeam", yourTeamList);
-                      await handleSaveSection("eventControl", updatedControl);
-                      try {
-                        await supabase
-                          .from('site_content')
-                          .upsert({
-                            id: 'hackverse_2026',
-                            content: updatedEdit,
-                            updated_at: new Date().toISOString()
-                          });
-                      } catch (sbErr) {
-                        console.warn("Direct site_content team lock update:", sbErr);
-                      }
-                    }}
+                    onClick={() => handleToggleTeamLock(!isTeamLocked)}
                     className={`px-3.5 py-2 border font-cinzel text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 sf-clip-angled-sm cursor-pointer transition-colors ${
                       isTeamLocked
                         ? "bg-[#55FF55]/20 border-[#55FF55] text-[#55FF55] hover:bg-[#55FF55]/30"
@@ -6044,34 +6052,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
 
                   <button
                     type="button"
-                    onClick={async () => {
-                      const nextLocked = !isTeamLocked;
-                      const updatedControl = {
-                        ...eventControlData,
-                        yourTeamLocked: nextLocked,
-                        yourTeamLockedMessage: teamLockedMessage
-                      };
-                      const updatedEdit = {
-                        ...editData,
-                        yourTeamLocked: nextLocked,
-                        eventControl: updatedControl
-                      };
-                      setEditData(updatedEdit);
-
-                      await handleSaveSection("yourTeam", yourTeamList);
-                      await handleSaveSection("eventControl", updatedControl);
-                      try {
-                        await supabase
-                          .from('site_content')
-                          .upsert({
-                            id: 'hackverse_2026',
-                            content: updatedEdit,
-                            updated_at: new Date().toISOString()
-                          });
-                      } catch (sbErr) {
-                        console.warn("Direct site_content team lock update:", sbErr);
-                      }
-                    }}
+                    onClick={() => handleToggleTeamLock(!isTeamLocked)}
                     className={`px-4 py-2 font-cinzel text-xs font-black uppercase tracking-wider border sf-clip-angled-sm flex items-center gap-2 cursor-pointer transition-all ${
                       isTeamLocked
                         ? "bg-[#55FF55]/20 border-[#55FF55] text-[#55FF55] hover:bg-[#55FF55]/30"

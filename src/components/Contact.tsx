@@ -200,6 +200,37 @@ export default function ContactPage({ onBack, onOpenYourTeam, isTeamLocked }: Co
             {contact.description ||
               'Have queries regarding hackathon battlegrounds, team registrations, travel coordinates, or partnership alliances? Connect directly with our operational coordinators below.'}
           </p>
+
+          {/* PROMINENT YOUR TEAM BANNER CARD */}
+          {!isTeamLocked && onOpenYourTeam && (
+            <div className="mt-6 p-4 sm:p-5 border-2 border-[#FFAA00]/50 bg-[#FFAA00]/10 sf-clip-angled-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-[0_0_20px_rgba(255,170,0,0.15)]">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-sm bg-[#FFAA00]/20 border border-[#FFAA00]/60 flex items-center justify-center shrink-0">
+                  <Users className="w-6 h-6 text-[#FFAA00]" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-[#FFAA00] animate-pulse" />
+                    <h3 className="font-cinzel text-sm sm:text-base font-black text-white uppercase tracking-wider">
+                      ORGANIZING CREW & LEADERSHIP DIRECTORY
+                    </h3>
+                  </div>
+                  <p className="font-rajdhani text-xs sm:text-sm text-neutral-300 mt-0.5">
+                    Explore student leads, tech architects, coordinators, and domain heads behind SYNTHARA2.0.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                id="contact-explore-team-hero-btn"
+                onClick={onOpenYourTeam}
+                className="w-full sm:w-auto px-6 py-2.5 sf-btn-gold sf-clip-angled font-cinzel text-xs font-bold tracking-[0.16em] uppercase flex items-center justify-center gap-2 shrink-0 cursor-pointer shadow-[0_0_15px_rgba(212,175,55,0.3)] hover:scale-105 transition-all"
+              >
+                <Users className="w-4 h-4 text-black" />
+                <span>EXPLORE YOUR TEAM</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Direct Action Helplines Grid */}
