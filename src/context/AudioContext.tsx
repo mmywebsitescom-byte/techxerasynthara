@@ -26,10 +26,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [isMuted, setIsMuted] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      // Default to muted (true) on first visit
-      return saved === null ? true : saved === 'true';
+      // Default to music ON (false) when someone opens the website
+      return saved === 'true';
     } catch {
-      return true;
+      return false;
     }
   });
 
@@ -54,6 +54,16 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     audio.addEventListener('pause', handlePause);
 
     audioRef.current = audio;
+
+    // Immediately attempt autoplay on initial page load if not muted
+    if (!isMutedRef.current) {
+      audio.muted = false;
+      audio.play().then(() => {
+        setIsPlaying(true);
+      }).catch(() => {
+        // Browser requires first user gesture, handleInteraction will start it
+      });
+    }
 
     return () => {
       audio.removeEventListener('play', handlePlay);
@@ -141,10 +151,16 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
     window.addEventListener('click', handleInteraction, { capture: true });
     window.addEventListener('keydown', handleInteraction, { capture: true });
+    window.addEventListener('touchstart', handleInteraction, { capture: true, passive: true });
+    window.addEventListener('pointerdown', handleInteraction, { capture: true });
+    window.addEventListener('scroll', handleInteraction, { capture: true, passive: true });
 
     return () => {
       window.removeEventListener('click', handleInteraction, { capture: true });
       window.removeEventListener('keydown', handleInteraction, { capture: true });
+      window.removeEventListener('touchstart', handleInteraction, { capture: true });
+      window.removeEventListener('pointerdown', handleInteraction, { capture: true });
+      window.removeEventListener('scroll', handleInteraction, { capture: true });
     };
   }, [isMuted]);
 

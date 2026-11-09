@@ -9,6 +9,7 @@ export interface Challenge {
   image: string;
   problemStatement: string;
   requirements: string[];
+  rules?: string[];
   recommendedTech: string[];
   judgingCriteria: string[];
   expectedOutput: string;
@@ -67,6 +68,18 @@ export interface TeamMember {
   name: string;
   role: string;
   avatar?: string;
+}
+
+export interface YourTeamMember {
+  id: string;
+  name: string;
+  image: string;
+  designationTechxera: string; // Designation in Techxera
+  designationSynthara: string; // Designation in SYNTHARA2.0
+  category?: string;
+  linkedinUrl?: string;
+  instagramUrl?: string;
+  githubUrl?: string;
 }
 
 export interface Team {

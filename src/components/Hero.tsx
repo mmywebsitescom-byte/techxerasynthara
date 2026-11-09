@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { Terminal, FileText, ChevronDown, Swords, ExternalLink, Lock } from 'lucide-react';
+import { Terminal, ChevronDown, Swords, ExternalLink, Lock } from 'lucide-react';
 import Countdown from './Countdown';
 import { useSiteContent } from '../context/ContentContext';
 
@@ -15,11 +15,6 @@ export default function Hero({ onOpenBattlegrounds }: HeroProps) {
 
   const scrollToBattlegrounds = () => {
     const el = document.getElementById('challenges');
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const scrollToTimeline = () => {
-    const el = document.getElementById('timeline');
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -53,7 +48,7 @@ export default function Hero({ onOpenBattlegrounds }: HeroProps) {
           transition={{ duration: 0.7, delay: 0.15 }}
           className="relative w-full max-w-full px-2"
         >
-          <h1 className="sf-script-title sf-gothic-title text-4xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-[6rem] 2xl:text-9xl drop-shadow-[0_10px_25px_rgba(0,0,0,0.95)] sf-text-silver whitespace-nowrap">
+          <h1 className="sf-script-title sf-gothic-title text-3xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-[4.75rem] 2xl:text-8xl drop-shadow-[0_10px_25px_rgba(0,0,0,0.95)] sf-text-silver whitespace-nowrap">
             {hero.titleGothic || eventInfo.titleGothic || "𝚂𝚈𝙽𝚃𝙷𝙰𝚁𝙰2.0"}{' '}
             <span className="sf-text-gold">{hero.titleAccent || eventInfo.titleAccent || "2026"}</span>
           </h1>
@@ -155,16 +150,6 @@ export default function Hero({ onOpenBattlegrounds }: HeroProps) {
           >
             <Terminal className="w-4 h-4" />
             <span>{hero.battlegroundsLabel || "BATTLEGROUNDS"}</span>
-          </button>
-
-          {/* Timeline Button */}
-          <button
-            id="hero-view-timeline-btn"
-            onClick={scrollToTimeline}
-            className="w-full sm:w-auto h-12 sm:h-14 px-6 sf-btn-steel sf-clip-angled flex items-center justify-center gap-2 text-sm sm:text-base tracking-[0.14em] cursor-pointer"
-          >
-            <FileText className="w-4 h-4 text-[#D4AF37]" />
-            <span>{hero.timelineLabel || "TIMELINE"}</span>
           </button>
         </motion.div>
 

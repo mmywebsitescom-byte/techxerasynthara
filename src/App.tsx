@@ -11,6 +11,7 @@ import HowItWorks from './components/HowItWorks';
 import Timeline from './components/Timeline';
 import PrizesAndTeamsSection from './components/PrizesAndTeamsSection';
 import GalleryPage from './components/Gallery';
+import YourTeamPage from './components/YourTeam';
 import Partners from './components/Partners';
 import FAQ from './components/FAQ';
 import FinalCTA from './components/FinalCTA';
@@ -52,6 +53,7 @@ function MainApp() {
   const [showBattlegrounds, setShowBattlegrounds] = useState(false);
   const [showGallery, setShowGallery] = useState(false);
   const [showContact, setShowContact] = useState(false);
+  const [showYourTeam, setShowYourTeam] = useState(false);
   const [showAdmin, setShowAdmin] = useState(checkIsAdminUrl);
 
   const lenisRef = useRef<Lenis | null>(null);
@@ -123,28 +125,6 @@ function MainApp() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Sync /admin URL routing
-  useEffect(() => {
-    const handleUrlChange = () => {
-      setShowAdmin(checkIsAdminUrl());
-    };
-
-    handleUrlChange();
-    window.addEventListener('popstate', handleUrlChange);
-    window.addEventListener('hashchange', handleUrlChange);
-    return () => {
-      window.removeEventListener('popstate', handleUrlChange);
-      window.removeEventListener('hashchange', handleUrlChange);
-    };
-  }, []);
-
-  const handleCloseAdmin = () => {
-    setShowAdmin(false);
-    if (checkIsAdminUrl()) {
-      window.history.pushState({}, '', '/');
-    }
-  };
-
   // Registration handler — always redirects to Google Form URL configured by admin
   const regForm = content?.registrationForm || {};
   const googleFormUrl = regForm.googleFormUrl ? String(regForm.googleFormUrl).trim() : '';
@@ -154,6 +134,38 @@ function MainApp() {
   const eventControl = content?.eventControl || {};
   const battlegroundsLocked = eventControl.battlegroundsLocked === true;
   const battlegroundsLockedMessage = String(eventControl.battlegroundsLockedMessage || 'BATTLEGROUNDS INTEL IS CLASSIFIED. CHECK BACK CLOSER TO THE EVENT DATE.');
+
+  // Your Team lock state
+  const isTeamLocked = content?.yourTeamLocked === true || eventControl?.yourTeamLocked === true;
+
+  // Sync /admin URL routing
+  useEffect(() => {
+    const handleUrlChange = () => {
+      setShowAdmin(checkIsAdminUrl());
+      const hash = window.location.hash.toLowerCase();
+      if ((hash === '#your-team' || hash === '#team') && !isTeamLocked) {
+        setShowYourTeam(true);
+        setShowBattlegrounds(false);
+        setShowGallery(false);
+        setShowContact(false);
+      }
+    };
+
+    handleUrlChange();
+    window.addEventListener('popstate', handleUrlChange);
+    window.addEventListener('hashchange', handleUrlChange);
+    return () => {
+      window.removeEventListener('popstate', handleUrlChange);
+      window.removeEventListener('hashchange', handleUrlChange);
+    };
+  }, [isTeamLocked]);
+
+  const handleCloseAdmin = () => {
+    setShowAdmin(false);
+    if (checkIsAdminUrl()) {
+      window.history.pushState({}, '', '/');
+    }
+  };
 
   const handleOpenRegister = () => {
     if (!regIsOpen) {
@@ -177,6 +189,7 @@ function MainApp() {
     setShowBattlegrounds(true);
     setShowGallery(false);
     setShowContact(false);
+    setShowYourTeam(false);
     window.scrollTo({ top: 0 });
   };
 
@@ -188,6 +201,7 @@ function MainApp() {
     setShowGallery(true);
     setShowBattlegrounds(false);
     setShowContact(false);
+    setShowYourTeam(false);
     window.scrollTo({ top: 0 });
   };
 
@@ -199,11 +213,25 @@ function MainApp() {
     setShowContact(true);
     setShowBattlegrounds(false);
     setShowGallery(false);
+    setShowYourTeam(false);
     window.scrollTo({ top: 0 });
   };
 
   const handleCloseContact = () => {
     setShowContact(false);
+  };
+
+  const handleOpenYourTeam = () => {
+    if (isTeamLocked) return;
+    setShowYourTeam(true);
+    setShowBattlegrounds(false);
+    setShowGallery(false);
+    setShowContact(false);
+    window.scrollTo({ top: 0 });
+  };
+
+  const handleCloseYourTeam = () => {
+    setShowYourTeam(false);
   };
 
   const handleBattlegroundsRegister = (_challenge?: Challenge) => {
@@ -239,9 +267,23 @@ function MainApp() {
       {showGallery && <GalleryPage onBack={handleCloseGallery} />}
 
       {/* Contact Page overlay */}
-      {showContact && <ContactPage onBack={handleCloseContact} />}
+      {showContact && (
+        <ContactPage
+          onBack={handleCloseContact}
+          onOpenYourTeam={handleOpenYourTeam}
+          isTeamLocked={isTeamLocked}
+        />
+      )}
 
-      {!showBattlegrounds && !showGallery && !showContact && (
+      {/* Your Team Page overlay */}
+      {showYourTeam && (
+        <YourTeamPage
+          onBack={handleCloseYourTeam}
+          isLocked={isTeamLocked}
+        />
+      )}
+
+      {!showBattlegrounds && !showGallery && !showContact && !showYourTeam && (
         <>
           {/* Top Slim Scroll Progress */}
           <ScrollProgress />
@@ -253,6 +295,7 @@ function MainApp() {
             onOpenBattlegrounds={handleOpenBattlegrounds}
             onOpenGallery={handleOpenGallery}
             onOpenContact={handleOpenContact}
+            onOpenYourTeam={handleOpenYourTeam}
           />
 
           {/* Main Sections */}

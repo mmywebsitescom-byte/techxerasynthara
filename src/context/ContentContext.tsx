@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { ContactContent } from '../types';
+import { ContactContent, YourTeamMember } from '../types';
 
 export interface SiteContent {
   eventInfo: {
@@ -25,6 +25,8 @@ export interface SiteContent {
     battlegroundsLockedMessage?: string;
     sponsorsLocked?: boolean;
     sponsorsLockedMessage?: string;
+    yourTeamLocked?: boolean;
+    yourTeamLockedMessage?: string;
     [key: string]: unknown;
   };
   battlegrounds?: {
@@ -127,6 +129,10 @@ export interface SiteContent {
     name: string;
     category: string;
   }>;
+  yourTeam: YourTeamMember[];
+  yourTeamCategories?: string[];
+  yourTeamLocked?: boolean;
+  yourTeamLockedMessage?: string;
   faq: Array<{
     id: string;
     question: string;
@@ -172,6 +178,7 @@ export interface SiteContent {
     shortDescription?: string;
     problemStatement?: string;
     requirements?: string[];
+    rules?: string[];
     recommendedTech?: string[];
     prizePool?: string;
     firstPrize?: string;
@@ -277,7 +284,9 @@ export const initialFallbackContent: SiteContent = {
     battlegroundsLocked: false,
     battlegroundsLockedMessage: "BATTLEGROUNDS INTEL IS CLASSIFIED. CHECK BACK CLOSER TO THE EVENT DATE.",
     sponsorsLocked: false,
-    sponsorsLockedMessage: "SPONSOR ALLIANCES ARE CURRENTLY CLASSIFIED. OFFICIAL PARTNERS WILL BE UNVEILED CLOSER TO LAUNCH."
+    sponsorsLockedMessage: "SPONSOR ALLIANCES ARE CURRENTLY CLASSIFIED. OFFICIAL PARTNERS WILL BE UNVEILED CLOSER TO LAUNCH.",
+    yourTeamLocked: false,
+    yourTeamLockedMessage: "TEAM ROSTER IS CLASSIFIED. CHECK BACK CLOSER TO THE EVENT DATE."
   },
   battlegrounds: {
     title: "Battlegrounds",
@@ -349,6 +358,28 @@ export const initialFallbackContent: SiteContent = {
     specialDesc: "Best All-Women Squad, Best Freshman Hack, Best Hardware Integration, and Community Choice."
   },
   teams: [],
+  yourTeam: [
+    {
+      id: "yt-1",
+      name: "Raghab Barik",
+      image: "",
+      designationTechxera: "Core Developer & Lead",
+      designationSynthara: "Platform Architect & Technical Head",
+      category: "LEADERSHIP",
+      linkedinUrl: "https://raghabportfolio.in",
+      githubUrl: "",
+      instagramUrl: "",
+    },
+  ],
+  yourTeamCategories: [
+    "LEADERSHIP",
+    "CORE CREW",
+    "TECHNICAL",
+    "OPERATIONS",
+    "CREATIVE & DESIGN"
+  ],
+  yourTeamLocked: false,
+  yourTeamLockedMessage: "TEAM ROSTER IS CLASSIFIED. CHECK BACK CLOSER TO THE EVENT DATE.",
   faq: [],
   footer: {
     contactEmail: "codebreakers@gcekbpatna.ac.in",
@@ -488,6 +519,18 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
           adminSettings: { ...prev.adminSettings, ...(data.adminSettings || {}) },
           loadingScreen: { ...prev.loadingScreen, ...(data.loadingScreen || {}) },
           teams: Array.isArray(data.teams) ? data.teams : prev.teams,
+          yourTeam: Array.isArray(data.yourTeam) ? data.yourTeam : (Array.isArray(prev.yourTeam) ? prev.yourTeam : initialFallbackContent.yourTeam),
+          yourTeamCategories: Array.isArray(data.yourTeamCategories) ? data.yourTeamCategories : (Array.isArray(prev.yourTeamCategories) ? prev.yourTeamCategories : initialFallbackContent.yourTeamCategories),
+          yourTeamLocked: typeof data.yourTeamLocked === 'boolean'
+            ? data.yourTeamLocked
+            : (typeof data.eventControl?.yourTeamLocked === 'boolean'
+              ? data.eventControl.yourTeamLocked
+              : (prev.yourTeamLocked ?? false)),
+          yourTeamLockedMessage: typeof data.yourTeamLockedMessage === 'string'
+            ? data.yourTeamLockedMessage
+            : (typeof data.eventControl?.yourTeamLockedMessage === 'string'
+              ? data.eventControl.yourTeamLockedMessage
+              : (prev.yourTeamLockedMessage ?? "TEAM ROSTER IS CLASSIFIED. CHECK BACK CLOSER TO THE EVENT DATE.")),
           faq: Array.isArray(data.faq) ? data.faq : prev.faq,
           howItWorks: Array.isArray(data.howItWorks) ? data.howItWorks : prev.howItWorks,
           gallery: Array.isArray(data.gallery) ? data.gallery : prev.gallery,
@@ -527,6 +570,18 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
             adminSettings: { ...prev.adminSettings, ...(data.adminSettings || {}) },
             loadingScreen: { ...prev.loadingScreen, ...(data.loadingScreen || {}) },
             teams: Array.isArray(data.teams) ? data.teams : prev.teams,
+            yourTeam: Array.isArray(data.yourTeam) ? data.yourTeam : (Array.isArray(prev.yourTeam) ? prev.yourTeam : initialFallbackContent.yourTeam),
+          yourTeamCategories: Array.isArray(data.yourTeamCategories) ? data.yourTeamCategories : (Array.isArray(prev.yourTeamCategories) ? prev.yourTeamCategories : initialFallbackContent.yourTeamCategories),
+          yourTeamLocked: typeof data.yourTeamLocked === 'boolean'
+            ? data.yourTeamLocked
+            : (typeof data.eventControl?.yourTeamLocked === 'boolean'
+              ? data.eventControl.yourTeamLocked
+              : (prev.yourTeamLocked ?? false)),
+          yourTeamLockedMessage: typeof data.yourTeamLockedMessage === 'string'
+            ? data.yourTeamLockedMessage
+            : (typeof data.eventControl?.yourTeamLockedMessage === 'string'
+              ? data.eventControl.yourTeamLockedMessage
+              : (prev.yourTeamLockedMessage ?? "TEAM ROSTER IS CLASSIFIED. CHECK BACK CLOSER TO THE EVENT DATE.")),
             faq: Array.isArray(data.faq) ? data.faq : prev.faq,
             howItWorks: Array.isArray(data.howItWorks) ? data.howItWorks : prev.howItWorks,
             gallery: Array.isArray(data.gallery) ? data.gallery : prev.gallery,
@@ -576,6 +631,18 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 adminSettings: { ...prev.adminSettings, ...(data.adminSettings || {}) },
                 loadingScreen: { ...prev.loadingScreen, ...(data.loadingScreen || {}) },
                 teams: Array.isArray(data.teams) ? data.teams : prev.teams,
+                yourTeam: Array.isArray(data.yourTeam) ? data.yourTeam : (Array.isArray(prev.yourTeam) ? prev.yourTeam : initialFallbackContent.yourTeam),
+          yourTeamCategories: Array.isArray(data.yourTeamCategories) ? data.yourTeamCategories : (Array.isArray(prev.yourTeamCategories) ? prev.yourTeamCategories : initialFallbackContent.yourTeamCategories),
+          yourTeamLocked: typeof data.yourTeamLocked === 'boolean'
+            ? data.yourTeamLocked
+            : (typeof data.eventControl?.yourTeamLocked === 'boolean'
+              ? data.eventControl.yourTeamLocked
+              : (prev.yourTeamLocked ?? false)),
+          yourTeamLockedMessage: typeof data.yourTeamLockedMessage === 'string'
+            ? data.yourTeamLockedMessage
+            : (typeof data.eventControl?.yourTeamLockedMessage === 'string'
+              ? data.eventControl.yourTeamLockedMessage
+              : (prev.yourTeamLockedMessage ?? "TEAM ROSTER IS CLASSIFIED. CHECK BACK CLOSER TO THE EVENT DATE.")),
                 faq: Array.isArray(data.faq) ? data.faq : prev.faq,
                 howItWorks: Array.isArray(data.howItWorks) ? data.howItWorks : prev.howItWorks,
                 gallery: Array.isArray(data.gallery) ? data.gallery : prev.gallery,

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Menu, X, Swords, Camera, Phone } from 'lucide-react';
+import { Menu, X, Swords, Camera, Phone, Users } from 'lucide-react';
 import { useSiteContent } from '../context/ContentContext';
 import SkeletonImage from './SkeletonImage';
 
@@ -10,9 +10,10 @@ interface NavbarProps {
   onOpenBattlegrounds: () => void;
   onOpenGallery: () => void;
   onOpenContact?: () => void;
+  onOpenYourTeam?: () => void;
 }
 
-export default function Navbar({ onOpenRegister, activeSection, onOpenBattlegrounds, onOpenGallery, onOpenContact }: NavbarProps) {
+export default function Navbar({ onOpenRegister, activeSection, onOpenBattlegrounds, onOpenGallery, onOpenContact, onOpenYourTeam }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hideNav, setHideNav] = useState(false);
   const lastScrollY = useRef(0);

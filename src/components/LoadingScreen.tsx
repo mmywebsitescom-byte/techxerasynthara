@@ -21,8 +21,10 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
   const { content } = useSiteContent();
   const { isPlaying, isMuted, toggleSound } = useAudio();
   const ls = content?.loadingScreen || {};
-  const isEnabled = ls.enabled !== false;
-  const totalDuration = typeof ls.durationMs === 'number' && ls.durationMs >= 500 ? ls.durationMs : 4600;
+  const isEnabled = ls.enabled !== false && (typeof ls.durationMs !== 'number' || ls.durationMs > 0);
+  const totalDuration = typeof ls.durationMs === 'number' && ls.durationMs >= 300
+    ? ls.durationMs
+    : (ls.durationMs === 0 ? 0 : 4600);
 
   const [percent, setPercent] = useState(0);
   const [phase, setPhase] = useState<'loading' | 'fadeout'>('loading');
@@ -41,7 +43,7 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
   const doneRef = useRef(false);
 
   useEffect(() => {
-    if (!isEnabled) {
+    if (!isEnabled || totalDuration <= 0) {
       onComplete();
       return;
     }

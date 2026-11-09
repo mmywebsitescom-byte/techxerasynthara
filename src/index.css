@@ -496,6 +496,37 @@
 }
 
 /* ==========================================================================
+   QUEST DOSSIER RETRO MODAL SCROLLBAR
+   ========================================================================== */
+.retro-modal-scrollbar {
+  scrollbar-width: thin !important;
+  scrollbar-color: #FFAA00 #181818 !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
+}
+
+.retro-modal-scrollbar::-webkit-scrollbar {
+  width: 10px !important;
+  height: 10px !important;
+}
+
+.retro-modal-scrollbar::-webkit-scrollbar-track {
+  background: #181818 !important;
+  border-left: 2px solid #555555 !important;
+}
+
+.retro-modal-scrollbar::-webkit-scrollbar-thumb {
+  background: #FFAA00 !important;
+  border: 1px solid #000000 !important;
+  box-shadow: inset 1px 1px 0px #FFE082, inset -1px -1px 0px #805500 !important;
+}
+
+.retro-modal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #FFB733 !important;
+  box-shadow: inset 1px 1px 0px #FFFFFF, inset -1px -1px 0px #996600 !important;
+}
+
+/* ==========================================================================
    PARTNER HEADER TICKER & MARQUEE ANIMATION
    ========================================================================== */
 @keyframes partnerMarquee {

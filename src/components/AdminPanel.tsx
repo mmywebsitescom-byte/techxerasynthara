@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  X, Lock, Shield, Settings, Users, Award, HelpCircle, Calendar,
+  X, Lock, Shield, ShieldAlert, Settings, Users, Award, HelpCircle, Calendar,
   Edit3, Save, Plus, Trash2, RefreshCw, LogOut, ChevronRight,
   Database, Globe, Star, FileText, CheckCircle2, Code2, AlertCircle,
   Search, Download, ExternalLink, Activity, ClipboardList, Key,
@@ -36,6 +36,7 @@ type Section =
   | "challenges"
   | "timeline"
   | "teams" 
+  | "yourTeam"
   | "faq" 
   | "partners"
   | "howItWorks"
@@ -48,6 +49,58 @@ type Section =
 
 const API_BASE = "/api";
 const TOKEN_KEY = "hv26_admin_token";
+
+function getStoredAdminToken(): string | null {
+  try {
+    const sessionTok = sessionStorage.getItem(TOKEN_KEY);
+    if (sessionTok) return sessionTok;
+
+    const localTok = localStorage.getItem(TOKEN_KEY);
+    if (localTok) {
+      const expiryStr = localStorage.getItem(`${TOKEN_KEY}_expiry`);
+      if (expiryStr) {
+        const expiry = parseInt(expiryStr, 10);
+        if (!isNaN(expiry) && Date.now() > expiry) {
+          localStorage.removeItem(TOKEN_KEY);
+          localStorage.removeItem(`${TOKEN_KEY}_expiry`);
+          return null;
+        }
+      }
+      return localTok;
+    }
+  } catch {}
+  return null;
+}
+
+function saveAdminToken(tok: string, sessionDuration = "7d", persist = true) {
+  try {
+    sessionStorage.setItem(TOKEN_KEY, tok);
+    if (persist) {
+      let durationMs = 7 * 24 * 60 * 60 * 1000;
+      if (sessionDuration === "1h") durationMs = 60 * 60 * 1000;
+      else if (sessionDuration === "24h") durationMs = 24 * 60 * 60 * 1000;
+      else if (sessionDuration === "7d") durationMs = 7 * 24 * 60 * 60 * 1000;
+      else if (sessionDuration === "30d") durationMs = 30 * 24 * 60 * 60 * 1000;
+      else if (sessionDuration === "never") durationMs = 365 * 24 * 60 * 60 * 1000;
+
+      const expiryTime = Date.now() + durationMs;
+      localStorage.setItem(TOKEN_KEY, tok);
+      localStorage.setItem(`${TOKEN_KEY}_expiry`, String(expiryTime));
+      localStorage.setItem(`${TOKEN_KEY}_duration`, sessionDuration);
+    } else {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(`${TOKEN_KEY}_expiry`);
+    }
+  } catch {}
+}
+
+function clearAdminToken() {
+  try {
+    sessionStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(`${TOKEN_KEY}_expiry`);
+  } catch {}
+}
 
 function formatExternalUrl(url?: string, platform?: string): string {
   if (!url || !url.trim()) return '';
@@ -92,7 +145,8 @@ function formatExternalUrl(url?: string, platform?: string): string {
 
 export default function AdminPanel({ onClose }: AdminPanelProps) {
   const { refreshContent } = useSiteContent();
-  const [token, setToken] = useState<string | null>(() => sessionStorage.getItem(TOKEN_KEY));
+  const [token, setToken] = useState<string | null>(getStoredAdminToken);
+  const [rememberMe, setRememberMe] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
@@ -144,6 +198,9 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
   const [battlePerks, setBattlePerks] = useState("");
   const [battlePrizeMsg, setBattlePrizeMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [bannerMsg, setBannerMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Your Team custom category state
+  const [newCategoryInput, setNewCategoryInput] = useState("");
 
   // Contact Messages Inbox state
   const [contactMessages, setContactMessages] = useState<any[]>([]);
@@ -197,6 +254,8 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
       challenges: Array.isArray(data.challenges) ? data.challenges : [],
       timeline: Array.isArray(data.timeline) ? data.timeline : [],
       teams: Array.isArray(data.teams) ? data.teams : [],
+      yourTeam: Array.isArray(data.yourTeam) ? data.yourTeam : (Array.isArray(initialFallbackContent.yourTeam) ? initialFallbackContent.yourTeam : []),
+      yourTeamCategories: Array.isArray(data.yourTeamCategories) ? data.yourTeamCategories : (Array.isArray(initialFallbackContent.yourTeamCategories) ? initialFallbackContent.yourTeamCategories : ['LEADERSHIP', 'CORE CREW', 'TECHNICAL', 'OPERATIONS', 'CREATIVE & DESIGN']),
       faq: Array.isArray(data.faq) ? data.faq : [],
       gallery: Array.isArray(data.gallery) ? data.gallery : [],
       finalCta: { ...initialFallbackContent.finalCta, ...(data.finalCta || {}) },
@@ -343,9 +402,10 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
       const targetEmail = typeof adminSettings.email === 'string' && adminSettings.email.trim()
         ? adminSettings.email.trim().toLowerCase()
         : ADMIN_EMAIL.toLowerCase();
+      const sessionDuration = adminSettings.sessionDuration || "7d";
 
       if ((!emailNorm || emailNorm === targetEmail) && password === targetPass) {
-        sessionStorage.setItem(TOKEN_KEY, targetPass);
+        saveAdminToken(targetPass, sessionDuration, rememberMe);
         setToken(targetPass);
         setLoginLoading(false);
         return;
@@ -357,7 +417,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
     // 2. Default hardcoded check
     if ((emailNorm === ADMIN_EMAIL.toLowerCase() || !emailNorm) && password === ADMIN_PASSWORD) {
       const validToken = ADMIN_PASSWORD;
-      sessionStorage.setItem(TOKEN_KEY, validToken);
+      saveAdminToken(validToken, "7d", rememberMe);
       setToken(validToken);
       setLoginLoading(false);
       return;
@@ -372,7 +432,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
       });
       const data = await res.json();
       if (data.success && data.token) {
-        sessionStorage.setItem(TOKEN_KEY, data.token);
+        saveAdminToken(data.token, "7d", rememberMe);
         setToken(data.token);
       } else {
         setLoginError("Invalid email or password. Please try again.");
@@ -386,7 +446,15 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
   const handleSaveSection = async (sectionKey: string, data: any) => {
     setSaveStatus("saving");
     try {
-      const updatedFull = { ...editData, [sectionKey]: data };
+      const updatedFull = {
+        ...editData,
+        [sectionKey]: data,
+        ...(sectionKey === 'yourTeam' ? {
+          yourTeamCategories: teamCategoriesList,
+          yourTeamLocked: isTeamLocked,
+          yourTeamLockedMessage: teamLockedMessage
+        } : {})
+      };
 
       // 1. Direct Supabase Cloud Save (Guaranteed persistence after deploy)
       try {
@@ -532,6 +600,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
         shortDescription: ch.shortDescription || "",
         problemStatement: ch.problemStatement || "",
         requirements: parseList(ch.requirements),
+        rules: parseList(ch.rules),
         judgingCriteria: parseList(ch.judgingCriteria),
         skills: parseCsv(ch.skills),
         image: ch.image || "",
@@ -737,7 +806,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
         .from('site_content')
         .upsert({ id: 'hackverse_2026', content: updatedFull, updated_at: new Date().toISOString() });
 
-      sessionStorage.setItem(TOKEN_KEY, newPasscode.trim());
+      saveAdminToken(newPasscode.trim(), editData.adminSettings?.sessionDuration || "7d", true);
       setToken(newPasscode.trim());
       setEditData(updatedFull);
 
@@ -763,7 +832,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
   };
 
   const logout = () => {
-    sessionStorage.removeItem(TOKEN_KEY);
+    clearAdminToken();
     setToken(null);
   };
 
@@ -835,6 +904,22 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
               </div>
             </div>
 
+            <div className="flex items-center justify-between text-xs font-rajdhani pt-0.5">
+              <label className="flex items-center gap-2 cursor-pointer text-neutral-300 hover:text-white select-none">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 accent-[#D4AF37] cursor-pointer rounded"
+                />
+                <span className="font-bold">Keep me logged in</span>
+              </label>
+              <span className="text-[11px] font-mono text-[#D4AF37]/80 flex items-center gap-1">
+                <Clock className="w-3 h-3 text-[#55FF55]" />
+                Auto-timeout: {editData.adminSettings?.sessionDuration || "7 Days"}
+              </span>
+            </div>
+
             {loginError && (
               <div className="flex items-center gap-2 p-3 border border-[#FF4655]/40 bg-[#FF4655]/10 text-[#FF4655] font-rajdhani text-xs">
                 <AlertCircle className="w-4 h-4 shrink-0" />
@@ -866,6 +951,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
   };
 
   const galleryItemsCount = Array.isArray(editData.gallery) ? editData.gallery.length : 0;
+  const yourTeamCount = Array.isArray(editData.yourTeam) ? editData.yourTeam.length : 0;
 
   const sidebarGroups: NavGroup[] = [
     {
@@ -888,6 +974,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
         { key: "timeline", label: "Event Chronology", icon: <Clock className="w-4 h-4 text-cyan-400" /> },
         { key: "prizes", label: "Prize & Bounties", icon: <Award className="w-4 h-4 text-[#D4AF37]" /> },
         { key: "teams", label: "Featured Squads", icon: <Users className="w-4 h-4 text-neutral-300" /> },
+        { key: "yourTeam", label: `Your Team / Crew (${yourTeamCount})`, icon: <Users className="w-4 h-4 text-[#FFAA00]" /> },
         { key: "partners", label: "Official Partners", icon: <Handshake className="w-4 h-4 text-[#55FF55]" /> },
         { key: "gallery", label: `Gallery Archives (${galleryItemsCount})`, icon: <Camera className="w-4 h-4 text-[#F5D061]" /> },
         { key: "faq", label: "Rules & FAQ Base", icon: <HelpCircle className="w-4 h-4 text-neutral-300" /> },
@@ -915,7 +1002,9 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
     battlegroundsLocked: false,
     battlegroundsLockedMessage: "BATTLEGROUNDS INTEL IS CLASSIFIED. CHECK BACK CLOSER TO THE EVENT DATE.",
     sponsorsLocked: false,
-    sponsorsLockedMessage: "SPONSOR ALLIANCES ARE CURRENTLY CLASSIFIED. OFFICIAL PARTNERS WILL BE UNVEILED CLOSER TO LAUNCH."
+    sponsorsLockedMessage: "SPONSOR ALLIANCES ARE CURRENTLY CLASSIFIED. OFFICIAL PARTNERS WILL BE UNVEILED CLOSER TO LAUNCH.",
+    yourTeamLocked: false,
+    yourTeamLockedMessage: "TEAM ROSTER IS CLASSIFIED. CHECK BACK CLOSER TO THE EVENT DATE."
   };
   const battlegroundsData = editData.battlegrounds || {
     title: "Battlegrounds",
@@ -990,6 +1079,28 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
   const challenges: any[] = Array.isArray(editData.challenges) ? editData.challenges : [];
   const timeline: any[] = Array.isArray(editData.timeline) ? editData.timeline : [];
   const teams: any[] = Array.isArray(editData.teams) ? editData.teams : [];
+  const yourTeamList: any[] = Array.isArray(editData.yourTeam) ? editData.yourTeam : [];
+  const rawTeamCategories = Array.isArray(editData.yourTeamCategories) && editData.yourTeamCategories.length > 0
+    ? editData.yourTeamCategories
+    : ['LEADERSHIP', 'CORE CREW', 'TECHNICAL', 'OPERATIONS', 'CREATIVE & DESIGN'];
+  const memberCategories = yourTeamList.map((m: any) => (m.category || '').trim()).filter(Boolean);
+  const teamCategoriesList: string[] = Array.from(new Set([...rawTeamCategories, ...memberCategories]));
+  const isTeamLocked = Boolean(editData.yourTeamLocked ?? eventControlData.yourTeamLocked);
+  const teamLockedMessage = String(
+    editData.yourTeamLockedMessage ||
+    eventControlData.yourTeamLockedMessage ||
+    "TEAM ROSTER IS CLASSIFIED. CHECK BACK CLOSER TO THE EVENT DATE."
+  );
+
+  const handleAddCategory = () => {
+    if (!newCategoryInput.trim()) return;
+    const cat = newCategoryInput.trim().toUpperCase();
+    if (!teamCategoriesList.includes(cat)) {
+      const updated = [...teamCategoriesList, cat];
+      setEditData({ ...editData, yourTeamCategories: updated });
+    }
+    setNewCategoryInput("");
+  };
   const faq: any[] = Array.isArray(editData.faq) ? editData.faq : [];
   const partners: any[] = Array.isArray(editData.partners)
     ? editData.partners
@@ -1615,6 +1726,101 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                 </button>
               </div>
 
+              {/* ── Your Team Lock/Unlock Access Control ── */}
+              <div className="p-6 border border-[#FF4655]/30 bg-[#0c1017] sf-clip-angled-sm space-y-5">
+                <div className="flex items-center gap-2 border-b border-[#FF4655]/20 pb-3">
+                  <Users className="w-4 h-4 text-[#FFAA00]" />
+                  <h4 className="font-cinzel font-bold text-sm text-[#FFAA00] uppercase tracking-wider">
+                    Your Team Page Access Control
+                  </h4>
+                </div>
+                <p className="font-rajdhani text-xs text-neutral-400">
+                  When <strong className="text-white">LOCKED</strong>, the "YOUR TEAM" button in the Contact page is hidden from visitors and direct access to the team roster is classified.
+                </p>
+
+                {/* Toggle */}
+                <div className={`flex items-center justify-between p-4 border sf-clip-angled-sm ${isTeamLocked ? 'border-[#FF4655]/50 bg-[#FF4655]/8' : 'border-[#55FF55]/50 bg-[#55FF55]/8'}`}>
+                  <div>
+                    <p className="font-rajdhani text-sm font-bold text-white uppercase tracking-wider">
+                      Your Team Visibility Status: {isTeamLocked ? "LOCKED & HIDDEN" : "UNLOCKED & PUBLIC"}
+                    </p>
+                    <p className="font-rajdhani text-xs text-neutral-500 mt-0.5">
+                      {isTeamLocked ? 'Team button and page are hidden on public site' : 'Visitors can view the organizing crew via the Contact page'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const nextLocked = !isTeamLocked;
+                      const updatedControl = {
+                        ...eventControlData,
+                        yourTeamLocked: nextLocked,
+                        yourTeamLockedMessage: teamLockedMessage
+                      };
+                      const updatedEdit = {
+                        ...editData,
+                        yourTeamLocked: nextLocked,
+                        eventControl: updatedControl
+                      };
+                      setEditData(updatedEdit);
+                      await handleSaveSection("eventControl", updatedControl);
+                    }}
+                    className={`shrink-0 px-5 py-2.5 font-cinzel text-xs font-black uppercase tracking-wider border sf-clip-angled-sm flex items-center gap-2 transition-all cursor-pointer ${
+                      isTeamLocked
+                        ? "bg-[#FF4655]/15 border-[#FF4655] text-[#FF4655]"
+                        : "bg-[#55FF55]/15 border-[#55FF55] text-[#55FF55]"
+                    }`}
+                  >
+                    {isTeamLocked ? (
+                      <>
+                        <Lock className="w-4 h-4" />
+                        <span>LOCKED</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckSquare className="w-4 h-4" />
+                        <span>OPEN</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Lock message */}
+                <div className="space-y-2">
+                  <label className="block font-rajdhani text-xs font-bold text-[#F5D061] uppercase tracking-wider">
+                    Your Team Locked Screen Message
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={teamLockedMessage}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const updatedControl = { ...eventControlData, yourTeamLockedMessage: val };
+                      setEditData({
+                        ...editData,
+                        yourTeamLockedMessage: val,
+                        eventControl: updatedControl
+                      });
+                    }}
+                    className="w-full bg-[#141a24] border border-[#D4AF37]/40 text-white px-4 py-3 text-sm font-rajdhani outline-none focus:border-[#D4AF37] transition-colors resize-none"
+                    placeholder="Message shown when team roster is locked..."
+                  />
+                  <p className="font-rajdhani text-[11px] text-neutral-500">This message is displayed to visitors when the team roster is locked.</p>
+                </div>
+
+                <button
+                  onClick={() => handleSaveSection("eventControl", {
+                    ...eventControlData,
+                    yourTeamLocked: isTeamLocked,
+                    yourTeamLockedMessage: teamLockedMessage
+                  })}
+                  className="px-6 py-2.5 sf-btn-gold sf-clip-angled font-cinzel text-xs font-bold tracking-widest flex items-center gap-2 cursor-pointer"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  SAVE TEAM ACCESS CONTROL
+                </button>
+              </div>
+
             </div>
           )}
 
@@ -1946,78 +2152,211 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
               </div>
 
               {/* ── Timing & Behavior Settings ── */}
-              <div className="p-6 border border-[#D4AF37]/30 bg-[#0c1017] sf-clip-angled-sm space-y-4">
-                <div className="flex items-center gap-2 border-b border-[#D4AF37]/20 pb-3">
-                  <Clock className="w-4 h-4 text-[#F5D061]" />
-                  <h4 className="font-cinzel font-bold text-sm text-[#F5D061] uppercase tracking-wider">
-                    Duration & Behavior
-                  </h4>
+              <div className="p-6 border border-[#D4AF37]/30 bg-[#0c1017] sf-clip-angled-sm space-y-5">
+                <div className="flex items-center justify-between border-b border-[#D4AF37]/20 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-[#F5D061]" />
+                    <h4 className="font-cinzel font-bold text-sm text-[#F5D061] uppercase tracking-wider">
+                      Loading Screen Duration & Speed Controls
+                    </h4>
+                  </div>
+                  <span className={`px-2.5 py-0.5 text-[11px] font-mono rounded ${
+                    loadingScreenData.enabled !== false && (loadingScreenData.durationMs || 4600) > 0
+                      ? "border border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                      : "border border-neutral-600 bg-neutral-800 text-neutral-400"
+                  }`}>
+                    {loadingScreenData.enabled !== false && (loadingScreenData.durationMs || 4600) > 0
+                      ? `ACTIVE • ${((loadingScreenData.durationMs || 4600) / 1000).toFixed(1)}s`
+                      : "DISABLED / INSTANT"}
+                  </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                {/* 1-Click Duration Presets */}
+                <div>
+                  <label className="block font-rajdhani text-xs font-bold text-[#F5D061] uppercase tracking-wider mb-2">
+                    Quick Duration Presets (1-Click)
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                    {[
+                      { label: "⚡ Ultra Fast", seconds: "0.8s", ms: 800, enabled: true },
+                      { label: "🏃 Fast", seconds: "1.5s", ms: 1500, enabled: true },
+                      { label: "⚖️ Balanced", seconds: "2.8s", ms: 2800, enabled: true },
+                      { label: "🎬 Cinematic", seconds: "4.6s", ms: 4600, enabled: true },
+                      { label: "🚀 Extended", seconds: "6.0s", ms: 6000, enabled: true },
+                      { label: "🚫 Instant Off", seconds: "0s", ms: 0, enabled: false },
+                    ].map((preset) => {
+                      const isCurrent = preset.enabled === false
+                        ? loadingScreenData.enabled === false || loadingScreenData.durationMs === 0
+                        : loadingScreenData.enabled !== false && (loadingScreenData.durationMs || 4600) === preset.ms;
+                      return (
+                        <button
+                          key={preset.label}
+                          type="button"
+                          onClick={() => {
+                            setEditData({
+                              ...editData,
+                              loadingScreen: {
+                                ...loadingScreenData,
+                                durationMs: preset.ms,
+                                enabled: preset.enabled,
+                              },
+                            });
+                          }}
+                          className={`p-2.5 border text-center transition-all cursor-pointer ${
+                            isCurrent
+                              ? "border-[#D4AF37] bg-[#D4AF37]/20 text-white shadow-[0_0_10px_rgba(212,175,55,0.3)] font-bold"
+                              : "border-white/10 bg-[#141a24]/50 text-neutral-300 hover:border-[#D4AF37]/50 hover:text-white"
+                          }`}
+                        >
+                          <div className="font-rajdhani text-xs">{preset.label}</div>
+                          <div className="font-mono text-[11px] text-[#55FF55]">{preset.seconds}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Fine-Tuning Slider & Direct Inputs */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center bg-[#141a24]/30 p-4 border border-white/5">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="font-rajdhani text-xs font-bold text-[#F5D061] uppercase tracking-wider">
-                        Intro Duration
+                        Fine-Tune Slider
                       </label>
                       <span className="font-mono text-xs text-[#55FF55]">
-                        {((loadingScreenData.durationMs || 4600) / 1000).toFixed(1)}s ({loadingScreenData.durationMs || 4600}ms)
+                        {((loadingScreenData.durationMs ?? 4600) / 1000).toFixed(1)}s ({loadingScreenData.durationMs ?? 4600}ms)
                       </span>
                     </div>
                     <input
                       type="range"
-                      min={1000}
+                      min={0}
                       max={8000}
-                      step={200}
-                      value={loadingScreenData.durationMs || 4600}
+                      step={100}
+                      value={loadingScreenData.durationMs ?? 4600}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setEditData({
+                          ...editData,
+                          loadingScreen: {
+                            ...loadingScreenData,
+                            durationMs: val,
+                            enabled: val > 0,
+                          },
+                        });
+                      }}
+                      className="w-full accent-[#D4AF37] cursor-pointer"
+                    />
+                    <div className="flex justify-between text-[10px] font-mono text-neutral-500">
+                      <span>0s (Instant)</span>
+                      <span>2s</span>
+                      <span>4.6s (Default)</span>
+                      <span>8s</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block font-rajdhani text-[11px] font-bold text-neutral-300 uppercase mb-1">
+                        Exact Seconds (s)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={15}
+                        step={0.1}
+                        value={((loadingScreenData.durationMs ?? 4600) / 1000).toFixed(1)}
+                        onChange={(e) => {
+                          const secs = parseFloat(e.target.value);
+                          const ms = isNaN(secs) ? 4600 : Math.round(secs * 1000);
+                          setEditData({
+                            ...editData,
+                            loadingScreen: {
+                              ...loadingScreenData,
+                              durationMs: ms,
+                              enabled: ms > 0,
+                            },
+                          });
+                        }}
+                        className="w-full bg-[#141a24] border border-[#D4AF37]/40 text-white px-3 py-1.5 text-xs font-mono outline-none focus:border-[#D4AF37]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-rajdhani text-[11px] font-bold text-neutral-300 uppercase mb-1">
+                        Exact Milliseconds (ms)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={15000}
+                        step={100}
+                        value={loadingScreenData.durationMs ?? 4600}
+                        onChange={(e) => {
+                          const ms = parseInt(e.target.value, 10);
+                          const validMs = isNaN(ms) ? 4600 : ms;
+                          setEditData({
+                            ...editData,
+                            loadingScreen: {
+                              ...loadingScreenData,
+                              durationMs: validMs,
+                              enabled: validMs > 0,
+                            },
+                          });
+                        }}
+                        className="w-full bg-[#141a24] border border-[#D4AF37]/40 text-white px-3 py-1.5 text-xs font-mono outline-none focus:border-[#D4AF37]"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Toggles */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className="flex items-center gap-2.5 p-3 border border-white/5 bg-[#141a24]/40 cursor-pointer hover:border-[#D4AF37]/30 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={loadingScreenData.enabled !== false && (loadingScreenData.durationMs ?? 4600) > 0}
                       onChange={(e) =>
                         setEditData({
                           ...editData,
                           loadingScreen: {
                             ...loadingScreenData,
-                            durationMs: Number(e.target.value),
+                            enabled: e.target.checked,
+                            durationMs: e.target.checked && (loadingScreenData.durationMs ?? 0) === 0 ? 2800 : loadingScreenData.durationMs,
                           },
                         })
                       }
-                      className="w-full accent-[#D4AF37] cursor-pointer"
+                      className="w-4 h-4 accent-[#D4AF37] cursor-pointer"
                     />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2.5 p-2.5 border border-white/5 bg-[#141a24]/40 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={loadingScreenData.enabled !== false}
-                        onChange={(e) =>
-                          setEditData({
-                            ...editData,
-                            loadingScreen: { ...loadingScreenData, enabled: e.target.checked },
-                          })
-                        }
-                        className="w-4 h-4 accent-[#D4AF37] cursor-pointer"
-                      />
-                      <span className="font-rajdhani text-xs text-neutral-300 font-bold">
+                    <div>
+                      <span className="font-rajdhani text-xs text-neutral-200 font-bold block">
                         Enable Loading Screen on Page Open
                       </span>
-                    </label>
+                      <span className="text-[10px] text-neutral-400 font-mono">
+                        Unchecking loads the site instantly with 0ms delay
+                      </span>
+                    </div>
+                  </label>
 
-                    <label className="flex items-center gap-2.5 p-2.5 border border-white/5 bg-[#141a24]/40 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={loadingScreenData.allowSkip !== false}
-                        onChange={(e) =>
-                          setEditData({
-                            ...editData,
-                            loadingScreen: { ...loadingScreenData, allowSkip: e.target.checked },
-                          })
-                        }
-                        className="w-4 h-4 accent-[#D4AF37] cursor-pointer"
-                      />
-                      <span className="font-rajdhani text-xs text-neutral-300 font-bold">
+                  <label className="flex items-center gap-2.5 p-3 border border-white/5 bg-[#141a24]/40 cursor-pointer hover:border-[#D4AF37]/30 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={loadingScreenData.allowSkip !== false}
+                      onChange={(e) =>
+                        setEditData({
+                          ...editData,
+                          loadingScreen: { ...loadingScreenData, allowSkip: e.target.checked },
+                        })
+                      }
+                      className="w-4 h-4 accent-[#D4AF37] cursor-pointer"
+                    />
+                    <div>
+                      <span className="font-rajdhani text-xs text-neutral-200 font-bold block">
                         Show 'Skip Intro' Button
                       </span>
-                    </label>
-                  </div>
+                      <span className="text-[10px] text-neutral-400 font-mono">
+                        Allows visitors to bypass intro at any moment
+                      </span>
+                    </div>
+                  </label>
                 </div>
 
                 <div className="pt-2">
@@ -5006,6 +5345,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                         shortDescription: "Description of the challenge track and engineering scope.",
                         problemStatement: "Problem specification and challenge scope detailed objective.",
                         requirements: "1. Working prototype demonstration\n2. Clean architecture and documentation",
+                        rules: "1. Participants can use any AI tool during the competition.\n2. Projects must be built during the competition timeframe.\n3. Pre-built templates and pre-existing projects are prohibited.\n4. Teams must be ready to explain their code when questioned by judges.",
                         judgingCriteria: "Novelty of algorithmic solution (35%)\nReal-world viability (35%)\nUX and execution (30%)",
                         skills: "Python, TypeScript, APIs",
                         image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop"
@@ -5074,6 +5414,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                               shortDescription: ch.shortDescription || "",
                               problemStatement: ch.problemStatement || "",
                               requirements: parseList(ch.requirements),
+                              rules: parseList(ch.rules),
                               judgingCriteria: parseList(ch.judgingCriteria),
                               skills: parseCsv(ch.skills),
                               image: ch.image || "",
@@ -5271,10 +5612,34 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                       </div>
                     </div>
 
-                    {/* Row 6: Recommended Tooling & Protocols */}
+                    {/* Row 5.5: Rules / Protocols Space */}
+                    <div>
+                      <label className="text-[10px] text-[#FF4655] font-bold uppercase block mb-1 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <ShieldAlert className="w-3.5 h-3.5 text-[#FF4655]" />
+                          <span>Rules & Protocols (1 per line) — Shown on View Specs Page</span>
+                        </span>
+                        <span className="text-[10px] font-mono text-neutral-400">
+                          e.g. AI tools permitted, 2-hour timeframe, original code only, judge review
+                        </span>
+                      </label>
+                      <textarea
+                        rows={5}
+                        value={Array.isArray(ch.rules) ? ch.rules.join("\n") : (ch.rules || "")}
+                        onChange={(e) => {
+                          const updated = [...challenges];
+                          updated[idx] = { ...updated[idx], rules: e.target.value };
+                          setEditData({ ...editData, challenges: updated });
+                        }}
+                        className="w-full bg-[#141b26] border border-[#FF4655]/40 text-neutral-100 p-2 text-xs font-mono leading-relaxed focus:border-[#FF4655] outline-none"
+                        placeholder="Participants can use any AI tool during the competition.&#10;AI can be used for HTML, CSS, JavaScript and React code generation.&#10;Participants must build the website during the competition timeframe.&#10;Previously completed websites, templates and pre-built clone projects are prohibited.&#10;All teams must be able to explain their implementation when questioned by judges.&#10;AI usage is permitted, but copying another team's work is prohibited."
+                      />
+                    </div>
+
+                    {/* Row 6: Recommended Tooling & Tech Stack */}
                     <div>
                       <label className="text-[10px] text-[#FFAA00] font-bold uppercase block mb-1">
-                        Recommended Tooling & Protocols / Tech Skills (Comma Separated)
+                        Recommended Tooling & Tech Stack / Libraries (Comma Separated)
                       </label>
                       <input
                         type="text"
@@ -5548,6 +5913,622 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                 >
                   <Save className="w-4 h-4" />
                   <span>SAVE SQUADS ROSTER</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 12.5. YOUR TEAM & ORGANIZING CREW */}
+          {activeSection === "yourTeam" && (
+            <div className="space-y-4 max-w-5xl">
+              {/* Header Card */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 border border-[#D4AF37]/30 bg-[#0c1017] sf-clip-angled-sm">
+                <div>
+                  <h4 className="font-cinzel font-bold text-sm text-white uppercase tracking-wider flex items-center gap-2">
+                    <Users className="w-4 h-4 text-[#FFAA00]" />
+                    <span>Your Team & Organizing Crew ({yourTeamList.length})</span>
+                  </h4>
+                  <p className="font-rajdhani text-xs text-neutral-400 mt-0.5">
+                    Manage team member details including Name, Photo, Designation in Techxera, and Designation in SYNTHARA2.0.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                  {/* DIRECT LOCK BUTTON */}
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const nextLocked = !isTeamLocked;
+                      const updatedControl = {
+                        ...eventControlData,
+                        yourTeamLocked: nextLocked,
+                        yourTeamLockedMessage: teamLockedMessage
+                      };
+                      const updatedEdit = {
+                        ...editData,
+                        yourTeamLocked: nextLocked,
+                        eventControl: updatedControl
+                      };
+                      setEditData(updatedEdit);
+
+                      await handleSaveSection("yourTeam", yourTeamList);
+                      await handleSaveSection("eventControl", updatedControl);
+                      try {
+                        await supabase
+                          .from('site_content')
+                          .upsert({
+                            id: 'hackverse_2026',
+                            content: updatedEdit,
+                            updated_at: new Date().toISOString()
+                          });
+                      } catch (sbErr) {
+                        console.warn("Direct site_content team lock update:", sbErr);
+                      }
+                    }}
+                    className={`px-3.5 py-2 border font-cinzel text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 sf-clip-angled-sm cursor-pointer transition-colors ${
+                      isTeamLocked
+                        ? "bg-[#55FF55]/20 border-[#55FF55] text-[#55FF55] hover:bg-[#55FF55]/30"
+                        : "bg-[#FF4655]/20 border-[#FF4655] text-[#FF4655] hover:bg-[#FF4655]/30"
+                    }`}
+                  >
+                    {isTeamLocked ? (
+                      <>
+                        <CheckSquare className="w-3.5 h-3.5" />
+                        <span>UNLOCK TEAM</span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-3.5 h-3.5" />
+                        <span>LOCK TEAM</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newMember = {
+                        id: `yt-${Date.now()}`,
+                        name: "NEW TEAM MEMBER",
+                        image: "",
+                        designationTechxera: "Core Member",
+                        designationSynthara: "Organizing Committee",
+                        category: "CORE CREW",
+                        linkedinUrl: "",
+                        instagramUrl: "",
+                        githubUrl: "",
+                      };
+                      setEditData({ ...editData, yourTeam: [...yourTeamList, newMember] });
+                    }}
+                    className="px-3.5 py-2 border border-[#FFAA00] bg-[#FFAA00]/20 hover:bg-[#FFAA00]/30 text-[#FFAA00] font-rajdhani text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 sf-clip-angled-sm cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>ADD TEAM MEMBER</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSaveSection("yourTeam", yourTeamList)}
+                    disabled={saveStatus === "saving"}
+                    className="px-4 py-2 sf-btn-gold sf-clip-angled-sm font-cinzel text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shrink-0"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>{saveStatus === "saving" ? "SAVING..." : "SAVE TEAM"}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Lock Status Controller Banner */}
+              <div className={`p-4 border sf-clip-angled-sm flex flex-col gap-3 transition-colors ${
+                isTeamLocked
+                  ? 'border-[#FF4655]/50 bg-[#FF4655]/10'
+                  : 'border-[#55FF55]/50 bg-[#55FF55]/10'
+              }`}>
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
+                      isTeamLocked ? 'bg-[#FF4655]/20 text-[#FF4655]' : 'bg-[#55FF55]/20 text-[#55FF55]'
+                    }`}>
+                      {isTeamLocked ? <Lock className="w-5 h-5" /> : <CheckSquare className="w-5 h-5" />}
+                    </div>
+                    <div>
+                      <span className="font-cinzel font-bold text-xs text-white uppercase tracking-wider">
+                        Public Visibility: {isTeamLocked ? "LOCKED & HIDDEN FROM PUBLIC" : "UNLOCKED & VISIBLE IN CONTACT"}
+                      </span>
+                      <p className="font-rajdhani text-[11px] text-neutral-400 mt-0.5">
+                        {isTeamLocked
+                          ? "The Your Team page and navigation button in Contact page are hidden from visitors."
+                          : "Visitors can access and view all team members and designations from the Contact page."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const nextLocked = !isTeamLocked;
+                      const updatedControl = {
+                        ...eventControlData,
+                        yourTeamLocked: nextLocked,
+                        yourTeamLockedMessage: teamLockedMessage
+                      };
+                      const updatedEdit = {
+                        ...editData,
+                        yourTeamLocked: nextLocked,
+                        eventControl: updatedControl
+                      };
+                      setEditData(updatedEdit);
+
+                      await handleSaveSection("yourTeam", yourTeamList);
+                      await handleSaveSection("eventControl", updatedControl);
+                      try {
+                        await supabase
+                          .from('site_content')
+                          .upsert({
+                            id: 'hackverse_2026',
+                            content: updatedEdit,
+                            updated_at: new Date().toISOString()
+                          });
+                      } catch (sbErr) {
+                        console.warn("Direct site_content team lock update:", sbErr);
+                      }
+                    }}
+                    className={`px-4 py-2 font-cinzel text-xs font-black uppercase tracking-wider border sf-clip-angled-sm flex items-center gap-2 cursor-pointer transition-all ${
+                      isTeamLocked
+                        ? "bg-[#55FF55]/20 border-[#55FF55] text-[#55FF55] hover:bg-[#55FF55]/30"
+                        : "bg-[#FF4655]/20 border-[#FF4655] text-[#FF4655] hover:bg-[#FF4655]/30"
+                    }`}
+                  >
+                    {isTeamLocked ? (
+                      <>
+                        <CheckSquare className="w-3.5 h-3.5" />
+                        <span>UNLOCK TEAM PAGE</span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-3.5 h-3.5" />
+                        <span>LOCK TEAM PAGE</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {isTeamLocked && (
+                  <div className="pt-2 border-t border-[#FF4655]/20">
+                    <label className="text-[10px] text-[#FF4655] font-bold uppercase block mb-1">
+                      Classified Locked Message Shown to Visitors
+                    </label>
+                    <input
+                      type="text"
+                      value={teamLockedMessage}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const updatedControl = { ...eventControlData, yourTeamLockedMessage: val };
+                        setEditData({
+                          ...editData,
+                          yourTeamLockedMessage: val,
+                          eventControl: updatedControl
+                        });
+                      }}
+                      className="w-full bg-[#141b26] border border-[#FF4655]/40 text-white p-2 text-xs font-mono focus:border-[#FF4655] outline-none"
+                      placeholder="TEAM ROSTER IS CLASSIFIED. CHECK BACK CLOSER TO THE EVENT DATE."
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Category Management Toolbar */}
+              <div className="p-4 border border-[#FFAA00]/40 bg-[#0c1017] sf-clip-angled-sm space-y-3 shadow-md">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-2">
+                  <div className="flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-[#FFAA00]" />
+                    <span className="font-cinzel text-xs font-bold text-white uppercase tracking-wider">
+                      Team Categories & Filter Tabs ({teamCategoriesList.length})
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-mono text-neutral-400">
+                    Each category creates a tab filter on the public team page
+                  </span>
+                </div>
+
+                {/* Active Category Pills */}
+                <div className="flex flex-wrap gap-2 items-center">
+                  {teamCategoriesList.map((cat, cIdx) => {
+                    const count = yourTeamList.filter(
+                      (m: any) => (m.category || '').trim().toUpperCase() === cat.trim().toUpperCase()
+                    ).length;
+                    return (
+                      <div
+                        key={`${cat}-${cIdx}`}
+                        className="px-2.5 py-1 bg-[#141a24] border border-[#FFAA00]/40 text-[#FFAA00] text-xs font-mono font-bold flex items-center gap-2 sf-clip-angled-sm"
+                      >
+                        <span>{cat}</span>
+                        <span className="text-[10px] text-neutral-400 bg-black/40 px-1 py-0.5 rounded font-mono">
+                          {count}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = teamCategoriesList.filter((_, i) => i !== cIdx);
+                            setEditData({ ...editData, yourTeamCategories: updated });
+                          }}
+                          className="text-neutral-400 hover:text-[#FF4655] font-bold text-sm leading-none cursor-pointer ml-0.5 transition-colors"
+                          title={`Delete category "${cat}"`}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Add New Category Form */}
+                <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                  <input
+                    type="text"
+                    value={newCategoryInput}
+                    onChange={(e) => setNewCategoryInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddCategory();
+                      }
+                    }}
+                    placeholder="Enter new category (e.g. FACULTY COORDINATOR, VOLUNTEERS, MENTORS...)"
+                    className="flex-1 bg-[#141a24] border border-[#FFAA00]/40 text-white px-3 py-1.5 text-xs font-mono uppercase focus:border-[#FFAA00] outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCategory}
+                    className="px-4 py-1.5 bg-[#FFAA00]/20 hover:bg-[#FFAA00]/30 border border-[#FFAA00] text-[#FFAA00] font-rajdhani text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shrink-0 sf-clip-angled-sm"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>ADD CATEGORY</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Members List */}
+              <div className="space-y-4 max-h-[65vh] overflow-y-auto p-1 custom-admin-scrollbar">
+                {yourTeamList.length === 0 ? (
+                  <div className="p-8 border border-dashed border-neutral-700 text-center text-neutral-400 font-rajdhani text-sm bg-[#0c1017]/50">
+                    <Users className="w-8 h-8 text-[#D4AF37] mx-auto mb-2 opacity-50" />
+                    <p className="font-bold text-white mb-1">No team members added yet.</p>
+                    <p className="text-xs text-neutral-400">Click "+ ADD TEAM MEMBER" above to add the first organizing crew member.</p>
+                  </div>
+                ) : (
+                  yourTeamList.map((member: any, idx: number) => (
+                    <div
+                      key={member.id || idx}
+                      className="p-4 sm:p-5 border border-[#D4AF37]/30 bg-[#0e131d] sf-clip-angled-sm space-y-4 relative group shadow-md"
+                    >
+                      {/* Top Action Bar */}
+                      <div className="flex items-center justify-between pb-2 border-b border-white/5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[10px] text-[#55FF55] bg-[#55FF55]/10 px-2 py-0.5 border border-[#55FF55]/30 uppercase font-bold">
+                            OPERATIVE #{String(idx + 1).padStart(2, "0")}
+                          </span>
+                          <span className="font-cinzel text-xs font-bold text-white truncate max-w-[200px]">
+                            {member.name || "Untitled Member"}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          {/* Move Up */}
+                          {idx > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = [...yourTeamList];
+                                const temp = updated[idx];
+                                updated[idx] = updated[idx - 1];
+                                updated[idx - 1] = temp;
+                                setEditData({ ...editData, yourTeam: updated });
+                              }}
+                              className="px-2 py-1 text-[10px] font-mono text-neutral-400 hover:text-white bg-black/40 border border-neutral-800 hover:border-neutral-600 transition-colors cursor-pointer"
+                              title="Move Up"
+                            >
+                              ↑
+                            </button>
+                          )}
+
+                          {/* Move Down */}
+                          {idx < yourTeamList.length - 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = [...yourTeamList];
+                                const temp = updated[idx];
+                                updated[idx] = updated[idx + 1];
+                                updated[idx + 1] = temp;
+                                setEditData({ ...editData, yourTeam: updated });
+                              }}
+                              className="px-2 py-1 text-[10px] font-mono text-neutral-400 hover:text-white bg-black/40 border border-neutral-800 hover:border-neutral-600 transition-colors cursor-pointer"
+                              title="Move Down"
+                            >
+                              ↓
+                            </button>
+                          )}
+
+                          {/* Delete Member */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`Remove "${member.name || 'this member'}" from team list?`)) {
+                                const updated = yourTeamList.filter((_: any, i: number) => i !== idx);
+                                setEditData({ ...editData, yourTeam: updated });
+                              }
+                            }}
+                            className="text-neutral-400 hover:text-[#FF4655] p-1.5 cursor-pointer bg-black/40 border border-neutral-800 hover:border-[#FF4655]/50 transition-colors ml-1"
+                            title="Delete Member"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Main Fields Layout */}
+                      <div className="flex flex-col lg:flex-row gap-4">
+                        {/* Image Preview & Upload Container */}
+                        <div className="w-full lg:w-44 shrink-0 flex flex-col items-center">
+                          <div className="w-full aspect-[4/4.5] border border-[#D4AF37]/35 bg-black sf-clip-angled-sm overflow-hidden relative flex items-center justify-center mb-2">
+                            {member.image && String(member.image).trim() ? (
+                              <img
+                                src={member.image}
+                                alt={member.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="text-neutral-500 text-center p-2 font-rajdhani text-xs">
+                                <Users className="w-8 h-8 mx-auto mb-1 opacity-30 text-[#D4AF37]" />
+                                <span>No photo uploaded</span>
+                              </div>
+                            )}
+                            <div className="absolute top-1.5 left-1.5 bg-[#0c1017]/90 text-[#F5D061] font-mono text-[9px] px-1.5 py-0.5 border border-[#D4AF37]/40">
+                              {member.category || "CREW"}
+                            </div>
+                          </div>
+
+                          {/* Upload / Image Link */}
+                          <label className="w-full py-1.5 bg-[#D4AF37]/15 hover:bg-[#D4AF37]/25 border border-[#D4AF37]/50 text-[#F5D061] font-rajdhani text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-colors sf-clip-angled-sm">
+                            <Upload className="w-3 h-3" />
+                            <span>Upload Photo</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const publicUrl = await uploadMediaToSupabase(file, 'team');
+                                if (publicUrl) {
+                                  const updated = [...yourTeamList];
+                                  updated[idx] = { ...updated[idx], image: publicUrl };
+                                  setEditData({ ...editData, yourTeam: updated });
+                                } else {
+                                  alert("Upload error. You can paste an image URL directly into the field.");
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+
+                        {/* Text Fields */}
+                        <div className="flex-1 space-y-3">
+                          {/* Row 1: Name and Category */}
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="sm:col-span-2">
+                              <label className="text-[10px] text-[#F5D061] font-bold uppercase block mb-1">
+                                Full Name *
+                              </label>
+                              <input
+                                type="text"
+                                value={member.name || ""}
+                                onChange={(e) => {
+                                  const updated = [...yourTeamList];
+                                  updated[idx] = { ...updated[idx], name: e.target.value };
+                                  setEditData({ ...editData, yourTeam: updated });
+                                }}
+                                className="w-full bg-[#141b26] border border-[#D4AF37]/35 text-white p-2 text-xs font-rajdhani font-bold focus:border-[#D4AF37] outline-none"
+                                placeholder="e.g. Raghab Barik"
+                              />
+                            </div>
+
+                            <div>
+                              <div className="flex items-center justify-between mb-1">
+                                <label className="text-[10px] text-[#F5D061] font-bold uppercase">
+                                  Category / Track
+                                </label>
+                                <span className="text-[9px] font-mono text-neutral-400">
+                                  Select or Type
+                                </span>
+                              </div>
+                              <div className="space-y-1">
+                                <select
+                                  value={teamCategoriesList.includes(member.category) ? member.category : "__custom__"}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val !== "__custom__") {
+                                      const updated = [...yourTeamList];
+                                      updated[idx] = { ...updated[idx], category: val };
+                                      setEditData({ ...editData, yourTeam: updated });
+                                    }
+                                  }}
+                                  className="w-full bg-[#141b26] border border-[#D4AF37]/35 text-[#F5D061] p-1.5 text-xs font-mono focus:border-[#D4AF37] outline-none cursor-pointer"
+                                >
+                                  {teamCategoriesList.map((cat) => (
+                                    <option key={cat} value={cat}>
+                                      {cat}
+                                    </option>
+                                  ))}
+                                  <option value="__custom__">⚡ Custom / Type Below...</option>
+                                </select>
+                                <input
+                                  type="text"
+                                  value={member.category || ""}
+                                  onChange={(e) => {
+                                    const val = e.target.value.toUpperCase();
+                                    const updated = [...yourTeamList];
+                                    updated[idx] = { ...updated[idx], category: val };
+                                    setEditData({ ...editData, yourTeam: updated });
+                                  }}
+                                  placeholder="Or type custom category..."
+                                  className="w-full bg-[#0c1017] border border-white/10 text-white p-1 text-[11px] font-mono uppercase focus:border-[#FFAA00] outline-none"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Row 2: Image URL direct input */}
+                          <div>
+                            <label className="text-[10px] text-neutral-400 font-bold uppercase block mb-1">
+                              Image URL (Direct link or Supabase uploaded above)
+                            </label>
+                            <input
+                              type="text"
+                              value={member.image || ""}
+                              onChange={(e) => {
+                                const updated = [...yourTeamList];
+                                updated[idx] = { ...updated[idx], image: e.target.value };
+                                setEditData({ ...editData, yourTeam: updated });
+                              }}
+                              className="w-full bg-[#141b26] border border-white/10 text-white p-1.5 text-xs font-mono focus:border-[#D4AF37] outline-none"
+                              placeholder="https://... or click 'Upload Photo'"
+                            />
+                          </div>
+
+                          {/* Row 3: DUAL DESIGNATIONS (Highlight requested by user) */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-[#141a24]/50 border border-white/5 rounded">
+                            {/* Designation in TECHXERA */}
+                            <div>
+                              <label className="text-[10px] text-[#4ECDC4] font-bold uppercase flex items-center gap-1.5 mb-1">
+                                <Shield className="w-3 h-3 text-[#4ECDC4]" />
+                                <span>Designation in Techxera *</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={member.designationTechxera || ""}
+                                onChange={(e) => {
+                                  const updated = [...yourTeamList];
+                                  updated[idx] = { ...updated[idx], designationTechxera: e.target.value };
+                                  setEditData({ ...editData, yourTeam: updated });
+                                }}
+                                className="w-full bg-[#0c1017] border border-[#4ECDC4]/40 text-white p-2 text-xs font-rajdhani font-bold focus:border-[#4ECDC4] outline-none"
+                                placeholder="e.g. Core Developer & Lead / President / Founder"
+                              />
+                            </div>
+
+                            {/* Designation in SYNTHARA2.0 */}
+                            <div>
+                              <label className="text-[10px] text-[#F5D061] font-bold uppercase flex items-center gap-1.5 mb-1">
+                                <Award className="w-3 h-3 text-[#F5D061]" />
+                                <span>Designation in Synthara 2.0 *</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={member.designationSynthara || ""}
+                                onChange={(e) => {
+                                  const updated = [...yourTeamList];
+                                  updated[idx] = { ...updated[idx], designationSynthara: e.target.value };
+                                  setEditData({ ...editData, yourTeam: updated });
+                                }}
+                                className="w-full bg-[#0c1017] border border-[#D4AF37]/50 text-[#F5D061] p-2 text-xs font-rajdhani font-bold focus:border-[#D4AF37] outline-none"
+                                placeholder="e.g. Platform Architect / Event Lead / Operations Head"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Row 4: Social Links (LinkedIn, Instagram, GitHub) */}
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                            <div>
+                              <label className="text-[9px] text-neutral-400 font-bold uppercase block mb-0.5">
+                                LinkedIn Profile
+                              </label>
+                              <input
+                                type="text"
+                                value={member.linkedinUrl || ""}
+                                onChange={(e) => {
+                                  const updated = [...yourTeamList];
+                                  updated[idx] = { ...updated[idx], linkedinUrl: e.target.value };
+                                  setEditData({ ...editData, yourTeam: updated });
+                                }}
+                                className="w-full bg-[#141b26] border border-white/10 text-white p-1.5 text-[11px] font-mono focus:border-[#0077b5] outline-none"
+                                placeholder="linkedin.com/in/username"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[9px] text-neutral-400 font-bold uppercase block mb-0.5">
+                                Instagram Profile
+                              </label>
+                              <input
+                                type="text"
+                                value={member.instagramUrl || ""}
+                                onChange={(e) => {
+                                  const updated = [...yourTeamList];
+                                  updated[idx] = { ...updated[idx], instagramUrl: e.target.value };
+                                  setEditData({ ...editData, yourTeam: updated });
+                                }}
+                                className="w-full bg-[#141b26] border border-white/10 text-white p-1.5 text-[11px] font-mono focus:border-[#E1306C] outline-none"
+                                placeholder="instagram.com/username"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[9px] text-neutral-400 font-bold uppercase block mb-0.5">
+                                GitHub Profile
+                              </label>
+                              <input
+                                type="text"
+                                value={member.githubUrl || ""}
+                                onChange={(e) => {
+                                  const updated = [...yourTeamList];
+                                  updated[idx] = { ...updated[idx], githubUrl: e.target.value };
+                                  setEditData({ ...editData, yourTeam: updated });
+                                }}
+                                className="w-full bg-[#141b26] border border-white/10 text-white p-1.5 text-[11px] font-mono focus:border-[#55FF55] outline-none"
+                                placeholder="github.com/username"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Bottom Action Bar */}
+              <div className="pt-2 flex items-center justify-between border-t border-[#D4AF37]/20">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newMember = {
+                      id: `yt-${Date.now()}`,
+                      name: "NEW TEAM MEMBER",
+                      image: "",
+                      designationTechxera: "Core Member",
+                      designationSynthara: "Organizing Committee",
+                      category: "CORE CREW",
+                      linkedinUrl: "",
+                      instagramUrl: "",
+                      githubUrl: "",
+                    };
+                    setEditData({ ...editData, yourTeam: [...yourTeamList, newMember] });
+                  }}
+                  className="px-4 py-2 border border-[#FFAA00]/50 hover:bg-[#FFAA00]/10 text-[#FFAA00] font-rajdhani text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 sf-clip-angled-sm cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>ADD ANOTHER MEMBER</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSaveSection("yourTeam", yourTeamList)}
+                  disabled={saveStatus === "saving"}
+                  className="px-6 py-2.5 sf-btn-gold sf-clip-angled font-cinzel text-xs font-bold tracking-[0.2em] uppercase flex items-center gap-2 cursor-pointer shadow-[0_0_15px_rgba(212,175,55,0.25)]"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{saveStatus === "saving" ? "SAVING TEAM..." : "SAVE TEAM CONFIGURATION"}</span>
                 </button>
               </div>
             </div>
@@ -7147,6 +8128,77 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                     {passcodeLoading ? "UPDATING..." : "UPDATE SECURITY PASSCODE"}
                   </button>
                 </form>
+              </div>
+
+              {/* ── Admin Login Session Duration / Timeout Control ── */}
+              <div className="p-5 border border-[#D4AF37]/30 bg-[#0c1017] sf-clip-angled-sm space-y-4">
+                <div className="flex items-center gap-2 border-b border-[#D4AF37]/20 pb-2">
+                  <Clock className="w-5 h-5 text-[#55FF55]" />
+                  <h3 className="font-cinzel font-bold text-base text-white">
+                    Admin Login Session Duration & Timeout Control
+                  </h3>
+                </div>
+
+                <p className="font-rajdhani text-xs text-neutral-300">
+                  Control how long you remain logged in to the Admin Panel. When "Keep me logged in" is enabled, your credentials stay active across browser restarts until the selected duration expires or you click "LOGOUT".
+                </p>
+
+                <div className="space-y-2">
+                  <label className="block font-rajdhani text-xs font-bold text-[#F5D061] uppercase tracking-wider">
+                    Select Active Session Duration:
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {[
+                      { key: "1h", label: "1 Hour", desc: "High Security" },
+                      { key: "24h", label: "24 Hours", desc: "1 Day" },
+                      { key: "7d", label: "7 Days", desc: "Recommended" },
+                      { key: "30d", label: "30 Days", desc: "Extended" },
+                      { key: "never", label: "Permanent", desc: "Never Auto-Logout" },
+                    ].map((preset) => {
+                      const currentDuration = editData.adminSettings?.sessionDuration || "7d";
+                      const active = currentDuration === preset.key;
+                      return (
+                        <button
+                          key={preset.key}
+                          type="button"
+                          onClick={async () => {
+                            const updatedSettings = {
+                              ...(editData.adminSettings || {}),
+                              sessionDuration: preset.key,
+                            };
+                            setEditData({ ...editData, adminSettings: updatedSettings });
+                            if (token) {
+                              saveAdminToken(token, preset.key, true);
+                            }
+                            await handleSaveSection("adminSettings", updatedSettings);
+                          }}
+                          className={`p-3 border text-left transition-all cursor-pointer ${
+                            active
+                              ? "border-[#55FF55] bg-[#55FF55]/15 text-white shadow-[0_0_12px_rgba(85,255,85,0.25)]"
+                              : "border-white/10 bg-[#141a24]/50 text-neutral-400 hover:border-[#D4AF37]/50 hover:text-white"
+                          }`}
+                        >
+                          <div className="font-rajdhani font-bold text-xs uppercase text-white flex items-center justify-between">
+                            <span>{preset.label}</span>
+                            {active && <CheckCircle2 className="w-3.5 h-3.5 text-[#55FF55]" />}
+                          </div>
+                          <div className="font-mono text-[10px] text-neutral-400 mt-0.5">{preset.desc}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="p-3 bg-[#141a24]/60 border border-white/5 rounded text-xs font-rajdhani text-neutral-300 flex items-center justify-between">
+                  <span>Current Active Session Timeout:</span>
+                  <span className="font-mono text-[#55FF55] font-bold uppercase">
+                    {editData.adminSettings?.sessionDuration === "1h" && "1 Hour (High Security)"}
+                    {editData.adminSettings?.sessionDuration === "24h" && "24 Hours (1 Day)"}
+                    {(!editData.adminSettings?.sessionDuration || editData.adminSettings?.sessionDuration === "7d") && "7 Days (Recommended)"}
+                    {editData.adminSettings?.sessionDuration === "30d" && "30 Days (Extended)"}
+                    {editData.adminSettings?.sessionDuration === "never" && "Permanent (No Expiry)"}
+                  </span>
+                </div>
               </div>
             </div>
           )}

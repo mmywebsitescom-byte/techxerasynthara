@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import {
   Phone, Mail, MessageSquare, MapPin, Clock, ExternalLink,
-  ChevronLeft, Send, CheckCircle2, AlertCircle, User, Shield, HelpCircle
+  ChevronLeft, Send, CheckCircle2, AlertCircle, User, Shield, HelpCircle, Users, Lock
 } from 'lucide-react';
 import { useSiteContent } from '../context/ContentContext';
 import { supabase } from '../lib/supabase';
 
 interface ContactPageProps {
   onBack: () => void;
+  onOpenYourTeam?: () => void;
+  isTeamLocked?: boolean;
 }
 
 export function parseMapEmbedUrl(raw?: string): string {
@@ -42,7 +44,7 @@ export function parseMapEmbedUrl(raw?: string): string {
   return trimmed;
 }
 
-export default function ContactPage({ onBack }: ContactPageProps) {
+export default function ContactPage({ onBack, onOpenYourTeam, isTeamLocked }: ContactPageProps) {
   const { content } = useSiteContent();
   const contact = content?.contact || {};
   const coordinators = Array.isArray(contact.contacts) ? contact.contacts : [];
@@ -152,12 +154,12 @@ export default function ContactPage({ onBack }: ContactPageProps) {
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
-        {/* Top Back Navigation */}
+        {/* Top Navigation: Back Button & Your Team Link */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="mb-8"
+          className="mb-8 flex items-center justify-between flex-wrap gap-4"
         >
           <button
             id="contact-back-btn"
@@ -167,6 +169,18 @@ export default function ContactPage({ onBack }: ContactPageProps) {
             <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
             BACK TO MAIN ARENA
           </button>
+
+          {/* YOUR TEAM BUTTON IN CONTACT PAGE — Hidden if isTeamLocked */}
+          {!isTeamLocked && onOpenYourTeam && (
+            <button
+              id="contact-your-team-btn"
+              onClick={onOpenYourTeam}
+              className="inline-flex items-center gap-2 px-4 py-2 border border-[#FFAA00]/50 hover:border-[#FFAA00] bg-[#FFAA00]/10 hover:bg-[#FFAA00]/20 text-[#FFAA00] font-cinzel text-xs font-bold tracking-[0.16em] uppercase sf-clip-angled-sm shadow-[0_0_14px_rgba(255,170,0,0.18)] transition-all cursor-pointer group"
+            >
+              <Users className="w-3.5 h-3.5 text-[#FFAA00] group-hover:scale-110 transition-transform" />
+              <span>EXPLORE YOUR TEAM</span>
+            </button>
+          )}
         </motion.div>
 
         {/* Page Header */}
@@ -498,6 +512,20 @@ export default function ContactPage({ onBack }: ContactPageProps) {
                     </div>
                   </div>
                 ))}
+
+                {/* Link to Full Team Roster */}
+                {!isTeamLocked && onOpenYourTeam && (
+                  <div className="pt-2 border-t border-white/10">
+                    <button
+                      type="button"
+                      onClick={onOpenYourTeam}
+                      className="w-full py-2.5 px-4 border border-[#FFAA00]/40 hover:border-[#FFAA00] bg-[#FFAA00]/10 hover:bg-[#FFAA00]/20 text-[#FFAA00] font-cinzel text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 sf-clip-angled-sm transition-all cursor-pointer shadow-[0_0_10px_rgba(255,170,0,0.1)]"
+                    >
+                      <Users className="w-3.5 h-3.5" />
+                      <span>VIEW ENTIRE ORGANIZING TEAM</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 

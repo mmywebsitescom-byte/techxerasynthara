@@ -55,6 +55,7 @@ export default function BattlegroundsPage({ onBack, onOpenRegister, isLocked, lo
         image: (c.image as string) || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop',
         problemStatement: c.problemStatement || c.shortDescription || '',
         requirements: parseArray(c.requirements, []),
+        rules: parseArray(c.rules, []),
         recommendedTech: parseArray(c.recommendedTech, []),
         judgingCriteria: parseArray(c.judgingCriteria, []),
         expectedOutput: (c.expectedOutput as string) || '',
