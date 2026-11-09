@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, CheckSquare, Terminal, Cpu, Award, ShieldAlert } from 'lucide-react';
+import { X, CheckSquare, Terminal, Cpu, Award, ShieldAlert, FileText, ExternalLink, Download } from 'lucide-react';
 import { Challenge } from '../types';
 
 interface ChallengeModalProps {
@@ -118,7 +118,7 @@ export default function ChallengeModal({
             style={{ overscrollBehavior: 'contain' }}
           >
             {/* Top Info Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-[#101010] border-4 border-t-[#222222] border-l-[#222222] border-r-[#555555] border-b-[#555555]">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-[#101010] border-4 border-t-[#222222] border-l-[#222222] border-r-[#555555] border-b-[#555555]">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="bg-[#FFAA00] text-black font-mono font-black text-xs px-2.5 py-0.5 border border-black shadow-[2px_2px_0px_#000]">
                   TRACK {challenge.number}
@@ -129,10 +129,30 @@ export default function ChallengeModal({
                 <span className="text-[#F5D061] bg-[#1a1505] font-mono font-bold text-xs px-2 py-0.5 border border-[#FFAA00]/50">
                   BOUNTY: {challenge.prizePool || '₹5,000'}
                 </span>
+                <span className="text-white bg-[#555555] font-mono font-bold text-xs px-2 py-0.5 border border-black">
+                  DIFFICULTY: {challenge.difficulty}
+                </span>
               </div>
-              <span className="text-white bg-[#555555] font-mono font-bold text-xs px-2 py-0.5 border border-black">
-                DIFFICULTY: {challenge.difficulty}
-              </span>
+
+              {/* RULES AND REQUIREMENTS PDF BUTTON */}
+              <button
+                type="button"
+                id="challenge-rules-pdf-btn"
+                onClick={() => {
+                  const pdfUrl = (challenge as any).rulesPdfUrl || (challenge as any).pdfUrl;
+                  if (pdfUrl && String(pdfUrl).trim()) {
+                    window.open(String(pdfUrl).trim(), '_blank', 'noopener,noreferrer');
+                  } else {
+                    alert('Official Rules & Requirements PDF is currently being finalized by the organizing command. Please check back shortly or review the in-page Rules & Protocols below.');
+                  }
+                }}
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-[#DC2626] hover:bg-[#EF4444] text-white font-mono font-black text-xs uppercase tracking-wider border-2 border-t-[#FFAAAA] border-l-[#FFAAAA] border-r-[#7F1D1D] border-b-[#7F1D1D] shadow-[2px_2px_0px_#000] cursor-pointer transition-all active:translate-y-0.5 shrink-0 group"
+                title="View / Download Official Rules & Requirements PDF in new tab"
+              >
+                <FileText className="w-3.5 h-3.5 text-white group-hover:scale-110 transition-transform" />
+                <span>RULES & REQUIREMENTS (PDF)</span>
+                <ExternalLink className="w-3 h-3 text-white/80" />
+              </button>
             </div>
 
             {/* Problem Statement Box */}
@@ -196,9 +216,21 @@ export default function ChallengeModal({
                   <ShieldAlert className="w-4 h-4 text-[#FF4655]" />
                   <span>RULES & PROTOCOLS {rules.length > 0 ? `(${rules.length})` : ''}</span>
                 </h4>
-                <span className="font-mono text-[10px] text-[#FFAA00] font-bold uppercase tracking-wider px-2 py-0.5 bg-[#FFAA00]/10 border border-[#FFAA00]/30 shadow-[1px_1px_0_#000]">
-                  COMPLIANCE MANDATORY
-                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {(challenge as any).rulesPdfUrl && (
+                    <button
+                      type="button"
+                      onClick={() => window.open(String((challenge as any).rulesPdfUrl).trim(), '_blank', 'noopener,noreferrer')}
+                      className="font-mono text-[10px] text-[#55FF55] hover:text-white font-bold uppercase tracking-wider px-2 py-0.5 bg-[#55FF55]/10 hover:bg-[#55FF55]/20 border border-[#55FF55]/40 flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <Download className="w-3 h-3" />
+                      <span>DOWNLOAD OFFICIAL PDF</span>
+                    </button>
+                  )}
+                  <span className="font-mono text-[10px] text-[#FFAA00] font-bold uppercase tracking-wider px-2 py-0.5 bg-[#FFAA00]/10 border border-[#FFAA00]/30 shadow-[1px_1px_0_#000]">
+                    COMPLIANCE MANDATORY
+                  </span>
+                </div>
               </div>
 
               {rules.length > 0 ? (

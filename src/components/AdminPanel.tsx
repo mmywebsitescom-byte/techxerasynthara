@@ -601,6 +601,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
         problemStatement: ch.problemStatement || "",
         requirements: parseList(ch.requirements),
         rules: parseList(ch.rules),
+        rulesPdfUrl: ch.rulesPdfUrl || "",
         judgingCriteria: parseList(ch.judgingCriteria),
         skills: parseCsv(ch.skills),
         image: ch.image || "",
@@ -1025,7 +1026,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
     titleGothic: "𝚂𝚈𝙽𝚃𝙷𝙰𝚁𝙰2.0",
     titleAccent: "2026",
     tagline: "BUILD THE FUTURE • ENTER THE ARENA",
-    durationMs: 4600,
+    durationMs: 1500,
     allowSkip: true,
   };
 
@@ -2200,8 +2201,8 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                       ? "border border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
                       : "border border-neutral-600 bg-neutral-800 text-neutral-400"
                   }`}>
-                    {loadingScreenData.enabled !== false && (loadingScreenData.durationMs || 4600) > 0
-                      ? `ACTIVE • ${((loadingScreenData.durationMs || 4600) / 1000).toFixed(1)}s`
+                    {loadingScreenData.enabled !== false && (loadingScreenData.durationMs || 1500) > 0
+                      ? `ACTIVE • ${((loadingScreenData.durationMs || 1500) / 1000).toFixed(1)}s`
                       : "DISABLED / INSTANT"}
                   </span>
                 </div>
@@ -2222,7 +2223,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                     ].map((preset) => {
                       const isCurrent = preset.enabled === false
                         ? loadingScreenData.enabled === false || loadingScreenData.durationMs === 0
-                        : loadingScreenData.enabled !== false && (loadingScreenData.durationMs || 4600) === preset.ms;
+                        : loadingScreenData.enabled !== false && (loadingScreenData.durationMs || 1500) === preset.ms;
                       return (
                         <button
                           key={preset.label}
@@ -2259,7 +2260,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                         Fine-Tune Slider
                       </label>
                       <span className="font-mono text-xs text-[#55FF55]">
-                        {((loadingScreenData.durationMs ?? 4600) / 1000).toFixed(1)}s ({loadingScreenData.durationMs ?? 4600}ms)
+                        {((loadingScreenData.durationMs ?? 1500) / 1000).toFixed(1)}s ({loadingScreenData.durationMs ?? 1500}ms)
                       </span>
                     </div>
                     <input
@@ -2267,7 +2268,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                       min={0}
                       max={8000}
                       step={100}
-                      value={loadingScreenData.durationMs ?? 4600}
+                      value={loadingScreenData.durationMs ?? 1500}
                       onChange={(e) => {
                         const val = Number(e.target.value);
                         setEditData({
@@ -2283,8 +2284,8 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                     />
                     <div className="flex justify-between text-[10px] font-mono text-neutral-500">
                       <span>0s (Instant)</span>
-                      <span>2s</span>
-                      <span>4.6s (Default)</span>
+                      <span>1.5s (Default)</span>
+                      <span>2.8s</span>
                       <span>8s</span>
                     </div>
                   </div>
@@ -2299,10 +2300,10 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                         min={0}
                         max={15}
                         step={0.1}
-                        value={((loadingScreenData.durationMs ?? 4600) / 1000).toFixed(1)}
+                        value={((loadingScreenData.durationMs ?? 1500) / 1000).toFixed(1)}
                         onChange={(e) => {
                           const secs = parseFloat(e.target.value);
-                          const ms = isNaN(secs) ? 4600 : Math.round(secs * 1000);
+                          const ms = isNaN(secs) ? 1500 : Math.round(secs * 1000);
                           setEditData({
                             ...editData,
                             loadingScreen: {
@@ -2324,10 +2325,10 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                         min={0}
                         max={15000}
                         step={100}
-                        value={loadingScreenData.durationMs ?? 4600}
+                        value={loadingScreenData.durationMs ?? 1500}
                         onChange={(e) => {
                           const ms = parseInt(e.target.value, 10);
-                          const validMs = isNaN(ms) ? 4600 : ms;
+                          const validMs = isNaN(ms) ? 1500 : ms;
                           setEditData({
                             ...editData,
                             loadingScreen: {
@@ -2348,7 +2349,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                   <label className="flex items-center gap-2.5 p-3 border border-white/5 bg-[#141a24]/40 cursor-pointer hover:border-[#D4AF37]/30 transition-colors">
                     <input
                       type="checkbox"
-                      checked={loadingScreenData.enabled !== false && (loadingScreenData.durationMs ?? 4600) > 0}
+                      checked={loadingScreenData.enabled !== false && (loadingScreenData.durationMs ?? 1500) > 0}
                       onChange={(e) =>
                         setEditData({
                           ...editData,
@@ -5381,6 +5382,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                         problemStatement: "Problem specification and challenge scope detailed objective.",
                         requirements: "1. Working prototype demonstration\n2. Clean architecture and documentation",
                         rules: "1. Participants can use any AI tool during the competition.\n2. Projects must be built during the competition timeframe.\n3. Pre-built templates and pre-existing projects are prohibited.\n4. Teams must be ready to explain their code when questioned by judges.",
+                        rulesPdfUrl: "",
                         judgingCriteria: "Novelty of algorithmic solution (35%)\nReal-world viability (35%)\nUX and execution (30%)",
                         skills: "Python, TypeScript, APIs",
                         image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop"
@@ -5450,6 +5452,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                               problemStatement: ch.problemStatement || "",
                               requirements: parseList(ch.requirements),
                               rules: parseList(ch.rules),
+                              rulesPdfUrl: ch.rulesPdfUrl || "",
                               judgingCriteria: parseList(ch.judgingCriteria),
                               skills: parseCsv(ch.skills),
                               image: ch.image || "",
@@ -5555,9 +5558,35 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] text-neutral-400 font-bold uppercase block mb-1">
-                          Cover Image URL
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[10px] text-neutral-400 font-bold uppercase block">
+                            Battle Image Artwork (Shown on Card Flip)
+                          </label>
+                          <label className="text-[10px] text-[#FFAA00] hover:text-white font-mono cursor-pointer flex items-center gap-1">
+                            <Upload className="w-3 h-3" />
+                            <span>UPLOAD FILE</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                try {
+                                  const url = await uploadMediaToSupabase(file, 'challenges');
+                                  if (url) {
+                                    const updated = [...challenges];
+                                    updated[idx] = { ...updated[idx], image: url };
+                                    setEditData({ ...editData, challenges: updated });
+                                  }
+                                } catch (err) {
+                                  console.error("Upload error:", err);
+                                  alert("Failed to upload image. Please try again.");
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
                         <input
                           type="text"
                           value={ch.image || ""}
@@ -5567,9 +5596,33 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                             setEditData({ ...editData, challenges: updated });
                           }}
                           className="w-full bg-[#141b26] border border-[#D4AF37]/30 text-white p-2 text-xs font-mono text-[#D4AF37]"
-                          placeholder="https://images.unsplash.com/..."
+                          placeholder="https://images.unsplash.com/... or click Upload File"
                         />
                       </div>
+                    </div>
+
+                    {/* PDF URL Input */}
+                    <div>
+                      <label className="text-[10px] text-[#DC2626] font-bold uppercase block mb-1 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <FileText className="w-3.5 h-3.5 text-[#DC2626]" />
+                          <span>Rules & Requirements PDF Link (Opens in New Tab for Students)</span>
+                        </span>
+                        <span className="text-[10px] font-mono text-neutral-400">
+                          Google Drive / Cloudinary / direct PDF URL
+                        </span>
+                      </label>
+                      <input
+                        type="url"
+                        value={ch.rulesPdfUrl || ""}
+                        onChange={(e) => {
+                          const updated = [...challenges];
+                          updated[idx] = { ...updated[idx], rulesPdfUrl: e.target.value };
+                          setEditData({ ...editData, challenges: updated });
+                        }}
+                        className="w-full bg-[#141b26] border border-[#DC2626]/50 text-white p-2 text-xs font-mono placeholder:text-neutral-500 focus:border-[#DC2626] outline-none"
+                        placeholder="https://drive.google.com/file/d/.../view or direct PDF URL"
+                      />
                     </div>
 
                     {/* Row 3: Short Summary (Card Preview) */}

@@ -10,6 +10,7 @@ export interface Challenge {
   problemStatement: string;
   requirements: string[];
   rules?: string[];
+  rulesPdfUrl?: string;
   recommendedTech: string[];
   judgingCriteria: string[];
   expectedOutput: string;

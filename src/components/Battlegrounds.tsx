@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
-import { Swords, ChevronLeft, ChevronRight, CheckSquare, Shield, Zap, Brain, Globe, Cpu, Leaf, ArrowRight, Star, Lock, Eye, Trophy } from 'lucide-react';
+import { Swords, ChevronLeft, ChevronRight, CheckSquare, Shield, Zap, Brain, Globe, Cpu, Leaf, ArrowRight, Star, Lock, Eye, Trophy, RotateCw, RotateCcw, Image as ImageIcon } from 'lucide-react';
 import { Challenge } from '../types';
 import { useSiteContent } from '../context/ContentContext';
 import ChallengeModal from './ChallengeModal';
@@ -31,6 +31,11 @@ const DIFFICULTY_COLOR: Record<string, string> = {
 export default function BattlegroundsPage({ onBack, onOpenRegister, isLocked, lockedMessage }: BattlegroundsPageProps) {
   const { content } = useSiteContent();
   const [activeModalChallenge, setActiveModalChallenge] = useState<Challenge | null>(null);
+  const [flippedCards, setFlippedCards] = useState<Record<string, boolean>>({});
+
+  const toggleFlip = (id: string) => {
+    setFlippedCards((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
 
   const parseArray = (val: unknown, fallback: string[] = []): string[] => {
     if (Array.isArray(val) && val.length > 0) return val.map(String).filter(Boolean);
@@ -56,6 +61,7 @@ export default function BattlegroundsPage({ onBack, onOpenRegister, isLocked, lo
         problemStatement: c.problemStatement || c.shortDescription || '',
         requirements: parseArray(c.requirements, []),
         rules: parseArray(c.rules, []),
+        rulesPdfUrl: (c.rulesPdfUrl as string) || '',
         recommendedTech: parseArray(c.recommendedTech, []),
         judgingCriteria: parseArray(c.judgingCriteria, []),
         expectedOutput: (c.expectedOutput as string) || '',
@@ -191,7 +197,7 @@ export default function BattlegroundsPage({ onBack, onOpenRegister, isLocked, lo
 
         <div className="w-full h-px bg-gradient-to-r from-transparent via-[#D4AF37]/30 to-transparent mb-12" />
 
-        {/* Challenge Grid */}
+        {/* Challenge Grid with 3D Card Flip */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-7">
           {allChallenges.map((challenge, idx) => (
             <motion.div
@@ -200,83 +206,193 @@ export default function BattlegroundsPage({ onBack, onOpenRegister, isLocked, lo
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: idx * 0.08 }}
-              className="group bg-[#2B2B2B] border-4 border-t-[#4a4a4a] border-l-[#4a4a4a] border-r-[#151515] border-b-[#151515] p-4 sm:p-5 shadow-[4px_4px_0px_#000] hover:-translate-y-1 transition-all duration-150 flex flex-col justify-between"
+              className="perspective-1200 min-h-[460px] sm:min-h-[490px] h-full"
             >
-              <div>
-                {/* Top Badges */}
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="bg-[#FFAA00] text-black font-mono font-black text-[10px] sm:text-[11px] px-2 py-0.5 border border-black shadow-[2px_2px_0px_#000]">
-                      CB-TRK-{challenge.number}
-                    </span>
-                    <span className="bg-[#1B1B1B] text-[#55FF55] font-mono font-bold text-[10px] px-2 py-0.5 border border-black">
-                      {challenge.category}
-                    </span>
-                  </div>
-                  <span className="bg-[#707070] text-white font-mono font-bold text-[10px] px-2.5 py-0.5 border border-black">
-                    {challenge.difficulty}
-                  </span>
-                </div>
+              <div
+                onClick={() => toggleFlip(challenge.id)}
+                className={`relative w-full h-full transform-style-3d transition-transform duration-700 ease-out cursor-pointer select-none ${
+                  flippedCards[challenge.id] ? 'rotate-y-180' : ''
+                }`}
+                title="Click anywhere on card to flip and view battle arena artwork"
+              >
+                {/* FRONT FACE */}
+                <div className="backface-hidden w-full h-full bg-[#2B2B2B] border-4 border-t-[#4a4a4a] border-l-[#4a4a4a] border-r-[#151515] border-b-[#151515] p-4 sm:p-5 shadow-[4px_4px_0px_#000] hover:-translate-y-1 transition-all duration-150 flex flex-col justify-between group">
+                  <div>
+                    {/* Top Badges */}
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="bg-[#FFAA00] text-black font-mono font-black text-[10px] sm:text-[11px] px-2 py-0.5 border border-black shadow-[2px_2px_0px_#000]">
+                          CB-TRK-{challenge.number}
+                        </span>
+                        <span className="bg-[#1B1B1B] text-[#55FF55] font-mono font-bold text-[10px] px-2 py-0.5 border border-black">
+                          {challenge.category}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="bg-[#707070] text-white font-mono font-bold text-[10px] px-2.5 py-0.5 border border-black">
+                          {challenge.difficulty}
+                        </span>
+                        <span
+                          className="inline-flex items-center gap-1 font-mono text-[9px] text-[#FFDF78] bg-[#141414] px-1.5 py-0.5 border border-[#FFAA00]/50 group-hover:border-[#FFAA00] transition-colors"
+                          title="Click card to flip"
+                        >
+                          <RotateCw className="w-2.5 h-2.5 text-[#55FF55]" />
+                          <span>FLIP</span>
+                        </span>
+                      </div>
+                    </div>
 
-                {/* Card Title */}
-                <h3 className="font-mono font-black text-base sm:text-lg text-white leading-snug uppercase [text-shadow:_1px_1px_0_#000] group-hover:text-[#55FF55] transition-colors mt-2">
-                  {challenge.title}
-                </h3>
+                    {/* Card Title */}
+                    <h3 className="font-mono font-black text-base sm:text-lg text-white leading-snug uppercase [text-shadow:_1px_1px_0_#000] group-hover:text-[#55FF55] transition-colors mt-2">
+                      {challenge.title}
+                    </h3>
 
-                {/* Track Bounty Banner */}
-                <div className="mt-2.5 py-1.5 px-2.5 bg-[#172013] border border-[#55FF55]/40 flex items-center justify-between">
-                  <span className="font-mono text-[10px] text-[#FFDF78] font-bold uppercase flex items-center gap-1.5">
-                    <Trophy className="w-3.5 h-3.5 text-[#FFAA00]" />
-                    TRACK BOUNTY:
-                  </span>
-                  <span className="font-mono text-xs font-black text-[#55FF55]">
-                    {challenge.prizePool || '₹5,000'}
-                  </span>
-                </div>
-
-                {/* Short Description */}
-                <p className="font-mono text-xs text-neutral-300 leading-relaxed mt-2.5 line-clamp-3">
-                  {challenge.shortDescription}
-                </p>
-
-                {/* Tech Skills Chips */}
-                <div className="mt-4 pt-3 border-t-2 border-[#383838]">
-                  <div className="text-[10px] font-mono font-bold text-[#FFDF78] uppercase tracking-wider mb-2 [text-shadow:_1px_1px_0_#000]">
-                    REQUIRED TECH STACK:
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {challenge.skills.slice(0, 4).map((skill) => (
-                      <span
-                        key={skill}
-                        className="px-2 py-0.5 bg-[#1B1B1B] text-neutral-200 border border-[#444] font-mono text-[10px] font-semibold"
-                      >
-                        {skill}
+                    {/* Track Bounty Banner */}
+                    <div className="mt-2.5 py-1.5 px-2.5 bg-[#172013] border border-[#55FF55]/40 flex items-center justify-between">
+                      <span className="font-mono text-[10px] text-[#FFDF78] font-bold uppercase flex items-center gap-1.5">
+                        <Trophy className="w-3.5 h-3.5 text-[#FFAA00]" />
+                        TRACK BOUNTY:
                       </span>
-                    ))}
+                      <span className="font-mono text-xs font-black text-[#55FF55]">
+                        {challenge.prizePool || '₹5,000'}
+                      </span>
+                    </div>
+
+                    {/* Short Description */}
+                    <p className="font-mono text-xs text-neutral-300 leading-relaxed mt-2.5 line-clamp-3">
+                      {challenge.shortDescription}
+                    </p>
+
+                    {/* Tech Skills Chips */}
+                    <div className="mt-4 pt-3 border-t-2 border-[#383838]">
+                      <div className="text-[10px] font-mono font-bold text-[#FFDF78] uppercase tracking-wider mb-2 [text-shadow:_1px_1px_0_#000]">
+                        REQUIRED TECH STACK:
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {challenge.skills.slice(0, 4).map((skill) => (
+                          <span
+                            key={skill}
+                            className="px-2 py-0.5 bg-[#1B1B1B] text-neutral-200 border border-[#444] font-mono text-[10px] font-semibold"
+                          >
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card Action Buttons (Front Face) — e.stopPropagation() ensures click does NOT flip */}
+                  <div className="mt-6 pt-3 border-t-2 border-[#383838] flex items-center gap-2">
+                    <button
+                      type="button"
+                      id={`battleground-specs-${challenge.id}-btn`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveModalChallenge(challenge);
+                      }}
+                      className="flex-1 bg-[#5B8731] hover:bg-[#689B37] text-white font-mono font-black text-xs uppercase tracking-wider border-3 border-t-[#85B745] border-l-[#85B745] border-r-[#2C4813] border-b-[#2C4813] active:border-t-[#2C4813] active:border-l-[#2C4813] active:border-r-[#85B745] active:border-b-[#85B745] py-2.5 shadow-[3px_3px_0px_#000] [text-shadow:_1px_1px_0_#000] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <span>VIEW SPECS</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      type="button"
+                      id={`battleground-claim-${challenge.id}-btn`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenRegister(challenge);
+                      }}
+                      className="bg-[#DBDBDB] hover:bg-[#EAEAEA] text-black font-mono font-black text-xs uppercase tracking-wider border-3 border-t-[#FFFFFF] border-l-[#FFFFFF] border-r-[#555555] border-b-[#555555] active:border-t-[#555555] active:border-l-[#555555] active:border-r-[#FFFFFF] active:border-b-[#FFFFFF] px-3.5 py-2.5 shadow-[3px_3px_0px_#000] transition-colors flex items-center gap-1 cursor-pointer"
+                      title="Claim this quest for your squad"
+                    >
+                      <CheckSquare className="w-3.5 h-3.5 text-black" />
+                      <span>CLAIM</span>
+                    </button>
                   </div>
                 </div>
-              </div>
 
-              {/* Card Action Buttons */}
-              <div className="mt-6 pt-3 border-t-2 border-[#383838] flex items-center gap-2">
-                <button
-                  id={`battleground-specs-${challenge.id}-btn`}
-                  onClick={() => setActiveModalChallenge(challenge)}
-                  className="flex-1 bg-[#5B8731] hover:bg-[#689B37] text-white font-mono font-black text-xs uppercase tracking-wider border-3 border-t-[#85B745] border-l-[#85B745] border-r-[#2C4813] border-b-[#2C4813] active:border-t-[#2C4813] active:border-l-[#2C4813] active:border-r-[#85B745] active:border-b-[#85B745] py-2.5 shadow-[3px_3px_0px_#000] [text-shadow:_1px_1px_0_#000] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <span>VIEW SPECS</span>
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+                {/* BACK FACE (BATTLE IMAGE ARTWORK) */}
+                <div className="backface-hidden rotate-y-180 absolute inset-0 w-full h-full bg-[#181818] border-4 border-t-[#FFAA00] border-l-[#FFAA00] border-r-[#7F5000] border-b-[#7F5000] shadow-[6px_6px_0px_#000] flex flex-col justify-between overflow-hidden">
+                  {/* Top Header on Back Face */}
+                  <div className="p-3 bg-[#111111]/90 border-b-2 border-[#FFAA00]/40 flex items-center justify-between shrink-0 z-10 backdrop-blur-sm">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="bg-[#FFAA00] text-black font-mono font-black text-[10px] px-2 py-0.5 border border-black shadow-[1px_1px_0_#000]">
+                        TRK-{challenge.number}
+                      </span>
+                      <span className="font-mono text-xs font-bold text-white truncate [text-shadow:_1px_1px_0_#000]">
+                        {challenge.title}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFlip(challenge.id);
+                      }}
+                      className="inline-flex items-center gap-1 px-2 py-1 bg-[#222] hover:bg-[#333] text-[#FFDF78] border border-[#FFAA00]/50 font-mono text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-colors shadow-[2px_2px_0_#000]"
+                      title="Flip back to challenge details"
+                    >
+                      <RotateCcw className="w-3 h-3 text-[#55FF55]" />
+                      <span>FLIP BACK</span>
+                    </button>
+                  </div>
 
-                <button
-                  id={`battleground-claim-${challenge.id}-btn`}
-                  onClick={() => onOpenRegister(challenge)}
-                  className="bg-[#DBDBDB] hover:bg-[#EAEAEA] text-black font-mono font-black text-xs uppercase tracking-wider border-3 border-t-[#FFFFFF] border-l-[#FFFFFF] border-r-[#555555] border-b-[#555555] active:border-t-[#555555] active:border-l-[#555555] active:border-r-[#FFFFFF] active:border-b-[#FFFFFF] px-3.5 py-2.5 shadow-[3px_3px_0px_#000] transition-colors flex items-center gap-1 cursor-pointer"
-                  title="Claim this quest for your squad"
-                >
-                  <CheckSquare className="w-3.5 h-3.5 text-black" />
-                  <span>CLAIM</span>
-                </button>
+                  {/* Battle Artwork Centerpiece */}
+                  <div className="relative flex-1 w-full bg-[#080808] overflow-hidden flex items-center justify-center group/artwork">
+                    <img
+                      src={challenge.image || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop'}
+                      alt={`${challenge.title} Battle Artwork`}
+                      className="w-full h-full object-cover object-center group-hover/artwork:scale-105 transition-transform duration-500"
+                      loading="lazy"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop';
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/40 pointer-events-none" />
+
+                    {/* Center overlay badge with artwork label */}
+                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-none">
+                      <span className="px-2 py-1 bg-black/80 border border-[#55FF55]/60 font-mono text-[10px] font-bold text-[#55FF55] uppercase tracking-wider backdrop-blur-sm flex items-center gap-1.5 shadow-[2px_2px_0_#000]">
+                        <ImageIcon className="w-3 h-3 text-[#55FF55]" />
+                        BATTLE ARENA ARTWORK
+                      </span>
+                      <span className="font-mono text-xs font-black text-[#FFDF78] bg-black/80 px-2 py-1 border border-[#FFAA00]/60 shadow-[2px_2px_0_#000]">
+                        {challenge.prizePool || '₹5,000'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Card Action Buttons (Back Face) */}
+                  <div className="p-3 bg-[#111111]/95 border-t-2 border-[#383838] flex items-center gap-2 shrink-0 z-10">
+                    <button
+                      type="button"
+                      id={`battleground-specs-back-${challenge.id}-btn`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveModalChallenge(challenge);
+                      }}
+                      className="flex-1 bg-[#5B8731] hover:bg-[#689B37] text-white font-mono font-black text-xs uppercase tracking-wider border-3 border-t-[#85B745] border-l-[#85B745] border-r-[#2C4813] border-b-[#2C4813] active:border-t-[#2C4813] active:border-l-[#2C4813] active:border-r-[#85B745] active:border-b-[#85B745] py-2.5 shadow-[3px_3px_0px_#000] [text-shadow:_1px_1px_0_#000] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <span>VIEW SPECS</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      type="button"
+                      id={`battleground-claim-back-${challenge.id}-btn`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenRegister(challenge);
+                      }}
+                      className="bg-[#DBDBDB] hover:bg-[#EAEAEA] text-black font-mono font-black text-xs uppercase tracking-wider border-3 border-t-[#FFFFFF] border-l-[#FFFFFF] border-r-[#555555] border-b-[#555555] active:border-t-[#555555] active:border-l-[#555555] active:border-r-[#FFFFFF] active:border-b-[#FFFFFF] px-3.5 py-2.5 shadow-[3px_3px_0px_#000] transition-colors flex items-center gap-1 cursor-pointer"
+                      title="Claim this quest for your squad"
+                    >
+                      <CheckSquare className="w-3.5 h-3.5 text-black" />
+                      <span>CLAIM</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </motion.div>
           ))}

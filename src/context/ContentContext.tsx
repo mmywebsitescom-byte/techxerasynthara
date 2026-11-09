@@ -179,6 +179,7 @@ export interface SiteContent {
     problemStatement?: string;
     requirements?: string[];
     rules?: string[];
+    rulesPdfUrl?: string;
     recommendedTech?: string[];
     prizePool?: string;
     firstPrize?: string;
@@ -422,7 +423,7 @@ export const initialFallbackContent: SiteContent = {
     titleGothic: "𝚂𝚈𝙽𝚃𝙷𝙰𝚁𝙰2.0",
     titleAccent: "2026",
     tagline: "BUILD THE FUTURE • ENTER THE ARENA",
-    durationMs: 4600,
+    durationMs: 1500,
     allowSkip: true
   },
   adminSettings: {

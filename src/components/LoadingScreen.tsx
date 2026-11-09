@@ -24,7 +24,7 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
   const isEnabled = ls.enabled !== false && (typeof ls.durationMs !== 'number' || ls.durationMs > 0);
   const totalDuration = typeof ls.durationMs === 'number' && ls.durationMs >= 300
     ? ls.durationMs
-    : (ls.durationMs === 0 ? 0 : 4600);
+    : (ls.durationMs === 0 ? 0 : 1500);
 
   const [percent, setPercent] = useState(0);
   const [phase, setPhase] = useState<'loading' | 'fadeout'>('loading');
@@ -71,7 +71,7 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
         clearInterval(timer);
         setPercent(100);
         setPhase('fadeout');
-        setTimeout(() => onComplete(), 550);
+        setTimeout(() => onComplete(), 350);
       }
     }, intervalMs);
 
@@ -82,7 +82,7 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
     if (doneRef.current) return;
     doneRef.current = true;
     setPhase('fadeout');
-    setTimeout(() => onComplete(), 400);
+    setTimeout(() => onComplete(), 300);
   };
 
   const displayPercent = String(Math.floor(percent)).padStart(2, '0');
@@ -92,8 +92,8 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
       {phase !== 'fadeout' && (
         <motion.div
           initial={{ opacity: 1 }}
-          exit={{ opacity: 0, scale: 1.025 }}
-          transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+          exit={{ opacity: 0, scale: 1.02 }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
           className="fixed inset-0 z-[200] flex flex-col items-center justify-center select-none overflow-hidden"
           style={{ background: '#040608', isolation: 'isolate' }}
         >
