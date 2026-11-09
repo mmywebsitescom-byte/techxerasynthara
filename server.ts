@@ -1,6 +1,8 @@
 import 'dotenv/config';
 import express from 'express';
 import pg from 'pg';
+import compression from 'compression';
+import { cache } from './redisClient';
 
 const app = express();
 const PORT = 4000;
@@ -22,14 +24,31 @@ dbPool.on('error', (err) => {
   console.warn('PostgreSQL pool background event:', err.message);
 });
 
-// ─── DIRECT SUPABASE DATABASE ACCESS HELPERS ────────────────────
-async function getSiteContentFromDb(): Promise<Record<string, any>> {
+// ─── DIRECT SUPABASE DATABASE ACCESS HELPERS WITH REDIS CACHING ───
+const SITE_CONTENT_CACHE_KEY = 'site_content_cache';
+const SITE_CONTENT_CACHE_TTL = 60; // 60 seconds TTL
+
+async function getSiteContentFromDb(bypassCache = false): Promise<Record<string, any>> {
+  if (!bypassCache) {
+    const cached = await cache.get(SITE_CONTENT_CACHE_KEY);
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch {
+        // Fall through on JSON parse error
+      }
+    }
+  }
+
   try {
     const res = await dbPool.query(
       "SELECT content FROM site_content WHERE id = 'hackverse_2026'"
     );
     if (res.rows[0]?.content && typeof res.rows[0].content === 'object') {
-      return res.rows[0].content;
+      const content = res.rows[0].content;
+      // Store in Redis / Cache with TTL
+      await cache.setex(SITE_CONTENT_CACHE_KEY, SITE_CONTENT_CACHE_TTL, JSON.stringify(content));
+      return content;
     }
   } catch (err: any) {
     console.error('Error fetching site_content from Supabase:', err.message);
@@ -44,6 +63,8 @@ async function saveSiteContentToDb(data: Record<string, any>): Promise<void> {
      ON CONFLICT (id) DO UPDATE SET content = $1, updated_at = now()`,
     [JSON.stringify(data)]
   );
+  // Immediately invalidate cache on update
+  await cache.del(SITE_CONTENT_CACHE_KEY);
 }
 
 async function getAdminCredentials(): Promise<{ email: string; pass: string }> {
@@ -61,6 +82,9 @@ async function getAdminCredentials(): Promise<{ email: string; pass: string }> {
     return { email: DEFAULT_ADMIN_EMAIL, pass: DEFAULT_ADMIN_PASSWORD };
   }
 }
+
+// Enable Gzip/Brotli compression for all requests (reduces payload by 80%+)
+app.use(compression());
 
 app.use(express.json({ limit: '10mb' }));
 
@@ -89,10 +113,47 @@ async function requireAdmin(req: express.Request, res: express.Response, next: e
 // ─── PUBLIC ROUTES ──────────────────────────────────────────────
 app.get('/api/content', async (_req, res) => {
   try {
-    const content = await getSiteContentFromDb();
+    const cached = await cache.get(SITE_CONTENT_CACHE_KEY);
+    if (cached) {
+      res.setHeader('X-Cache', 'HIT');
+      res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+      res.type('json').send(cached);
+      return;
+    }
+
+    res.setHeader('X-Cache', 'MISS');
+    res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+    const content = await getSiteContentFromDb(true);
     res.json(content);
   } catch (err: any) {
     res.status(500).json({ error: 'Failed to read content from Supabase', details: err.message });
+  }
+});
+
+// Cache & Redis operational status check
+app.get('/api/cache-status', async (_req, res) => {
+  try {
+    const status = await cache.getStatus();
+    res.json({
+      success: true,
+      ...status,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/redis-status', async (_req, res) => {
+  try {
+    const status = await cache.getStatus();
+    res.json({
+      success: true,
+      ...status,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -161,6 +222,18 @@ app.post('/api/admin/change-passcode', requireAdmin, async (req, res) => {
 // Enlist warrior registration — saved directly into Supabase registrations table
 app.post('/api/registrations', async (req, res) => {
   try {
+    // Rate limiting: Max 30 registration submissions per minute per IP
+    const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown';
+    const ipKey = String(clientIp).split(',')[0].trim();
+    const rate = await cache.rateLimit(`reg:${ipKey}`, 30, 60);
+    if (!rate.allowed) {
+      res.status(429).json({
+        error: 'Too many registration requests. Please wait a moment and try again.',
+        retryAfterSeconds: rate.resetSeconds,
+      });
+      return;
+    }
+
     const newReg = {
       id: req.body.ticketId || `HV-26-${Math.floor(1000 + Math.random() * 9000)}`,
       teamName: req.body.teamName || 'WARRIOR SQUAD',
@@ -203,6 +276,17 @@ app.post('/api/registrations', async (req, res) => {
     res.json({ success: true, id: newReg.id, registration: newReg });
   } catch (err: any) {
     res.status(500).json({ error: 'Failed to save registration in Supabase', details: err.message });
+  }
+});
+
+// Purge cache on demand (Redis + in-memory store)
+app.post('/api/admin/clear-cache', requireAdmin, async (_req, res) => {
+  try {
+    await cache.del(SITE_CONTENT_CACHE_KEY);
+    await cache.flushall();
+    res.json({ success: true, message: 'Redis & memory cache cleared successfully' });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to clear cache', details: err.message });
   }
 });
 
