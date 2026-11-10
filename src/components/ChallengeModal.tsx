@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, CheckSquare, Terminal, Cpu, Award, ShieldAlert, FileText, ExternalLink, Download } from 'lucide-react';
+import { X, CheckSquare, Terminal, Cpu, Award, ShieldAlert, FileText, ExternalLink, Download, Trophy, Gift, Sparkles } from 'lucide-react';
 import { Challenge } from '../types';
 
 interface ChallengeModalProps {
@@ -154,6 +154,46 @@ export default function ChallengeModal({
                 <ExternalLink className="w-3 h-3 text-white/80" />
               </button>
             </div>
+
+            {/* Battle Bounty & Rewards Breakdown (1st Place, Runner Up / Goodies & Perks) */}
+            {(challenge.prizePool || challenge.firstPrize || (challenge.secondPrize && challenge.secondPrize !== '₹0') || (challenge as any).bountyNotes || (challenge as any).perks) && (
+              <div className="p-3 sm:p-4 bg-[#141b12] border-4 border-t-[#253818] border-l-[#253818] border-r-[#55FF55]/40 border-b-[#55FF55]/40 shadow-[4px_4px_0px_#000] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 bg-[#FFAA00]/20 border border-[#FFAA00] flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(255,170,0,0.3)]">
+                    <Trophy className="w-5 h-5 text-[#FFAA00]" />
+                  </div>
+                  <div>
+                    <div className="font-mono text-xs font-black text-[#55FF55] tracking-wider uppercase flex items-center gap-1.5">
+                      <span>TRACK BOUNTY POOL:</span>
+                      <span className="text-white bg-[#101010] px-2 py-0.5 border border-[#55FF55]/40 text-xs">
+                        {challenge.prizePool || '₹5,000'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 flex-wrap mt-1 font-mono text-xs">
+                      {challenge.firstPrize && challenge.firstPrize !== '₹0' && (
+                        <span className="text-[#FFAA00] font-bold flex items-center gap-1">
+                          <Award className="w-3.5 h-3.5 text-[#FFAA00]" />
+                          1ST PLACE: <span className="text-white font-bold">{challenge.firstPrize}</span>
+                        </span>
+                      )}
+                      {challenge.secondPrize && challenge.secondPrize !== '₹0' && (
+                        <span className="text-[#55FF55] font-bold flex items-center gap-1">
+                          <Gift className="w-3.5 h-3.5 text-[#55FF55]" />
+                          RUNNER UP: <span className="text-white font-bold">{challenge.secondPrize}</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {((challenge as any).bountyNotes || (challenge as any).perks) && (
+                  <div className="px-3 py-1.5 bg-[#101010] border border-[#FFAA00]/60 font-mono text-xs text-[#FFDF78] flex items-center gap-1.5 shadow-[2px_2px_0_#000]">
+                    <Sparkles className="w-3.5 h-3.5 text-[#FFAA00]" />
+                    <span><strong className="text-[#55FF55]">GOODIES:</strong> {(challenge as any).bountyNotes || (challenge as any).perks}</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Problem Statement Box */}
             <div className="p-4 sm:p-5 bg-[#1B1B1B] border-4 border-t-[#111111] border-l-[#111111] border-r-[#444444] border-b-[#444444] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)]">

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
-import { Swords, ChevronLeft, ChevronRight, CheckSquare, Shield, Zap, Brain, Globe, Cpu, Leaf, ArrowRight, Star, Lock, Eye, Trophy, RotateCw, RotateCcw, Image as ImageIcon } from 'lucide-react';
+import { Swords, ChevronLeft, ChevronRight, CheckSquare, Shield, Zap, Brain, Globe, Cpu, Leaf, ArrowRight, Star, Lock, Eye, Trophy, RotateCw, RotateCcw, Image as ImageIcon, Award, Gift, Sparkles } from 'lucide-react';
 import { Challenge } from '../types';
 import { useSiteContent } from '../context/ContentContext';
 import ChallengeModal from './ChallengeModal';
@@ -47,28 +47,41 @@ export default function BattlegroundsPage({ onBack, onOpenRegister, isLocked, lo
     return fallback;
   };
 
-  // Strictly display challenges from Supabase database
+  // Strictly display challenges from Supabase database with live battle prizes merged
+  const configuredBattlePrizes: any[] = Array.isArray(content?.prizes?.battlePrizes)
+    ? content.prizes.battlePrizes
+    : [];
+
   const allChallenges: Challenge[] = (content.challenges && Array.isArray(content.challenges))
-    ? content.challenges.map((c, i) => ({
-        id: c.id || `c-${i}`,
-        number: c.number || String(i + 1).padStart(2, '0'),
-        title: c.title || 'CHALLENGE',
-        category: c.category || 'ARENA TRACK',
-        difficulty: (c.difficulty as any) || 'All Levels',
-        shortDescription: c.shortDescription || '',
-        skills: parseArray(c.skills, []),
-        image: (c.image as string) || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop',
-        problemStatement: c.problemStatement || c.shortDescription || '',
-        requirements: parseArray(c.requirements, []),
-        rules: parseArray(c.rules, []),
-        rulesPdfUrl: (c.rulesPdfUrl as string) || '',
-        recommendedTech: parseArray(c.recommendedTech, []),
-        judgingCriteria: parseArray(c.judgingCriteria, []),
-        expectedOutput: (c.expectedOutput as string) || '',
-        prizePool: (c.prizePool as string) || '',
-        firstPrize: (c.firstPrize as string) || '',
-        secondPrize: (c.secondPrize as string) || ''
-      }))
+    ? content.challenges.map((c, i) => {
+        const bp = configuredBattlePrizes.find((p: any) => p.challengeId === c.id);
+        const rawSecond = bp?.secondPrize ?? c.secondPrize ?? '';
+        const secondPrize = rawSecond && rawSecond !== '₹0' ? rawSecond : (c.secondPrize && c.secondPrize !== '₹0' ? c.secondPrize : '');
+        const perks = bp?.perks || (c.bountyNotes as string) || (c.perks as string) || '';
+
+        return {
+          id: c.id || `c-${i}`,
+          number: c.number || String(i + 1).padStart(2, '0'),
+          title: c.title || 'CHALLENGE',
+          category: c.category || 'ARENA TRACK',
+          difficulty: (c.difficulty as any) || 'All Levels',
+          shortDescription: c.shortDescription || '',
+          skills: parseArray(c.skills, []),
+          image: (c.image as string) || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop',
+          problemStatement: c.problemStatement || c.shortDescription || '',
+          requirements: parseArray(c.requirements, []),
+          rules: parseArray(c.rules, []),
+          rulesPdfUrl: (c.rulesPdfUrl as string) || '',
+          recommendedTech: parseArray(c.recommendedTech, []),
+          judgingCriteria: parseArray(c.judgingCriteria, []),
+          expectedOutput: (c.expectedOutput as string) || '',
+          prizePool: bp?.prizeAmount || (c.prizePool as string) || '',
+          firstPrize: bp?.firstPrize || (c.firstPrize as string) || '',
+          secondPrize: secondPrize,
+          bountyNotes: perks,
+          perks: perks,
+        };
+      })
     : [];
 
   const bgConfig = (content as any)?.battlegrounds || {};
@@ -258,6 +271,32 @@ export default function BattlegroundsPage({ onBack, onOpenRegister, isLocked, lo
                       </span>
                     </div>
 
+                    {/* 1st Place & Runner Up / Goodies Breakdown */}
+                    {(challenge.firstPrize || (challenge.secondPrize && challenge.secondPrize !== '₹0') || challenge.bountyNotes) && (
+                      <div className="mt-2 p-2 bg-[#1b1b1b] border border-[#383838] space-y-1 font-mono text-[10px]">
+                        <div className="flex items-center justify-between flex-wrap gap-1">
+                          {challenge.firstPrize && challenge.firstPrize !== '₹0' && (
+                            <span className="text-[#FFAA00] font-bold flex items-center gap-1">
+                              <Award className="w-3 h-3 text-[#FFAA00]" />
+                              1ST: <span className="text-white font-bold">{challenge.firstPrize}</span>
+                            </span>
+                          )}
+                          {challenge.secondPrize && challenge.secondPrize !== '₹0' && (
+                            <span className="text-[#55FF55] font-bold flex items-center gap-1">
+                              <Gift className="w-3 h-3 text-[#55FF55]" />
+                              RUNNER UP: <span className="text-white font-bold">{challenge.secondPrize}</span>
+                            </span>
+                          )}
+                        </div>
+                        {challenge.bountyNotes && (
+                          <div className="pt-0.5 text-[9px] text-[#FFDF78] flex items-center gap-1 truncate">
+                            <Sparkles className="w-2.5 h-2.5 text-[#FFAA00] shrink-0" />
+                            <span className="truncate"><strong className="text-[#55FF55]">GOODIES:</strong> {challenge.bountyNotes}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {/* Short Description */}
                     <p className="font-mono text-xs text-neutral-300 leading-relaxed mt-2.5 line-clamp-3">
                       {challenge.shortDescription}
@@ -357,9 +396,16 @@ export default function BattlegroundsPage({ onBack, onOpenRegister, isLocked, lo
                         <ImageIcon className="w-3 h-3 text-[#55FF55]" />
                         BATTLE ARENA ARTWORK
                       </span>
-                      <span className="font-mono text-xs font-black text-[#FFDF78] bg-black/80 px-2 py-1 border border-[#FFAA00]/60 shadow-[2px_2px_0_#000]">
-                        {challenge.prizePool || '₹5,000'}
-                      </span>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="font-mono text-xs font-black text-[#FFDF78] bg-black/85 px-2 py-0.5 border border-[#FFAA00]/60 shadow-[2px_2px_0_#000]">
+                          {challenge.prizePool || '₹5,000'}
+                        </span>
+                        {challenge.secondPrize && challenge.secondPrize !== '₹0' && (
+                          <span className="font-mono text-[9px] font-bold text-[#55FF55] bg-black/90 px-1.5 py-0.5 border border-[#55FF55]/60 shadow-[1px_1px_0_#000]">
+                            RUNNER UP: {challenge.secondPrize}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 

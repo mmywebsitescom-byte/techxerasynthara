@@ -8,33 +8,31 @@ export default function Prizes() {
   const prizes = content?.prizes || {};
   const challenges = Array.isArray(content?.challenges) ? content.challenges : [];
   
-  // Extract battle prizes or derive from challenges
-  const rawBattlePrizes = Array.isArray(prizes.battlePrizes) && prizes.battlePrizes.length > 0
+  // Extract battle prizes with fallback and merging from challenges
+  const configuredBattlePrizes: any[] = Array.isArray(prizes.battlePrizes) && prizes.battlePrizes.length > 0
     ? prizes.battlePrizes
-    : challenges
-        .filter((ch) => ch.prizePool)
-        .map((ch) => ({
-          challengeId: ch.id,
-          challengeTitle: ch.title,
-          challengeNumber: ch.number,
-          prizeAmount: ch.prizePool || '₹5,000',
-          firstPrize: ch.firstPrize || '',
-          secondPrize: ch.secondPrize || '',
-          perks: ch.bountyNotes || '',
-        }));
+    : [];
 
-  // If still empty, construct initial track prize cards from available challenges
-  const battlePrizes = rawBattlePrizes.length > 0
-    ? rawBattlePrizes
-    : challenges.map((ch, idx) => ({
-        challengeId: ch.id,
-        challengeTitle: ch.title,
-        challengeNumber: ch.number || String(idx + 1).padStart(2, '0'),
-        prizeAmount: ch.prizePool || '₹5,000',
-        firstPrize: ch.firstPrize || '₹3,500',
-        secondPrize: ch.secondPrize || '₹1,500',
-        perks: ch.bountyNotes || 'Winner trophy, cloud credits, certificate',
-      }));
+  const battlePrizes = challenges.length > 0
+    ? challenges.map((ch: any, idx: number) => {
+        const matched = configuredBattlePrizes.find((bp: any) => bp.challengeId === ch.id);
+        const prizeAmount = matched?.prizeAmount || ch.prizePool || '₹5,000';
+        const firstPrize = matched?.firstPrize || ch.firstPrize || '';
+        const rawSecond = matched?.secondPrize ?? ch.secondPrize ?? '';
+        const secondPrize = rawSecond && rawSecond !== '₹0' ? rawSecond : (ch.secondPrize && ch.secondPrize !== '₹0' ? ch.secondPrize : '');
+        const perks = matched?.perks || ch.bountyNotes || ch.perks || '';
+
+        return {
+          challengeId: ch.id || matched?.challengeId || `trk-${idx}`,
+          challengeTitle: ch.title || matched?.challengeTitle || 'CHALLENGE TRACK',
+          challengeNumber: ch.number || matched?.challengeNumber || String(idx + 1).padStart(2, '0'),
+          prizeAmount,
+          firstPrize,
+          secondPrize,
+          perks,
+        };
+      })
+    : configuredBattlePrizes;
 
   const totalPrizePool = prizes.poolTotal || content?.stats?.prizePool || '₹10,000+';
 
@@ -204,9 +202,9 @@ export default function Prizes() {
                   {bp.prizeAmount}
                 </div>
 
-                {/* Breakdown List */}
+                {/* Breakdown List: 1st Place, Runner Up (Cash/Goodies), and Perks */}
                 <div className="mt-4 pt-3 border-t-2 border-[#2b2b2b] space-y-2 font-mono text-xs">
-                  {bp.firstPrize && (
+                  {bp.firstPrize && bp.firstPrize !== '₹0' && (
                     <div className="flex items-center justify-between bg-[#1b1b1b] p-2 border border-[#333]">
                       <span className="text-[#FFAA00] font-bold flex items-center gap-1.5">
                         <Award className="w-3.5 h-3.5" />
@@ -216,10 +214,10 @@ export default function Prizes() {
                     </div>
                   )}
 
-                  {bp.secondPrize && (
+                  {bp.secondPrize && bp.secondPrize !== '₹0' && (
                     <div className="flex items-center justify-between bg-[#1b1b1b] p-2 border border-[#333]">
-                      <span className="text-[#DBDBDB] font-bold flex items-center gap-1.5">
-                        <Gift className="w-3.5 h-3.5" />
+                      <span className="text-[#55FF55] font-bold flex items-center gap-1.5">
+                        <Gift className="w-3.5 h-3.5 text-[#55FF55]" />
                         RUNNER UP:
                       </span>
                       <span className="text-white font-black">{bp.secondPrize}</span>
@@ -227,9 +225,14 @@ export default function Prizes() {
                   )}
 
                   {bp.perks && (
-                    <div className="pt-1 text-neutral-300 text-[11px] leading-relaxed flex items-start gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-[#55FF55] shrink-0 mt-0.5" />
-                      <span>{bp.perks}</span>
+                    <div className="pt-1.5 px-2.5 py-1.5 bg-[#172013] border border-[#55FF55]/30 text-neutral-200 text-xs leading-relaxed flex items-start gap-2 shadow-[inset_0_0_10px_rgba(85,255,85,0.05)]">
+                      <Sparkles className="w-4 h-4 text-[#FFAA00] shrink-0 mt-0.5" />
+                      <div>
+                        <span className="text-[#FFDF78] font-bold uppercase tracking-wider block text-[10px]">
+                          GOODIES & PERKS:
+                        </span>
+                        <span className="text-white font-medium">{bp.perks}</span>
+                      </div>
                     </div>
                   )}
                 </div>

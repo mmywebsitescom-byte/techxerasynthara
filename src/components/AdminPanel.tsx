@@ -7,7 +7,7 @@ import {
   Database, Globe, Star, FileText, CheckCircle2, Code2, AlertCircle,
   Search, Download, ExternalLink, Activity, ClipboardList, Key, Zap,
   Clock, Layers, Sparkles, Navigation, CheckSquare, Upload, Image, Swords, Eye, Terminal, Handshake, Camera, Trophy,
-  Phone, PhoneCall, MessageSquare, Mail
+  Phone, PhoneCall, MessageSquare, Mail, Gift
 } from "lucide-react";
 import { useSiteContent, initialFallbackContent } from "../context/ContentContext";
 import { supabase, uploadMediaToSupabase } from "../lib/supabase";
@@ -653,6 +653,11 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
         judgingCriteria: parseList(ch.judgingCriteria),
         skills: parseCsv(ch.skills),
         image: ch.image || "",
+        prizePool: ch.prizePool || "",
+        firstPrize: ch.firstPrize || "",
+        secondPrize: ch.secondPrize || "",
+        bountyNotes: ch.bountyNotes || ch.perks || "",
+        perks: ch.perks || ch.bountyNotes || "",
       };
     });
 
@@ -4233,13 +4238,21 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                 return;
               }
 
+              const formatPrizeOrText = (val: string): string => {
+                const trimmed = val.trim();
+                if (!trimmed) return "";
+                // If it's a pure number, format as currency (e.g. 1500 -> ₹1,500)
+                if (/^\d+(\.\d+)?$/.test(trimmed)) {
+                  const num = parseFloat(trimmed);
+                  return `₹${num.toLocaleString("en-IN")}`;
+                }
+                // Otherwise it contains text like "Goodies", "Swags", "Certificate", etc. — preserve exact words!
+                return trimmed;
+              };
+
               const formattedAmount = formatPrizeCurrency(numVal);
-              const formattedFirst = battleFirstPrize.trim()
-                ? (battleFirstPrize.includes("₹") ? battleFirstPrize.trim() : `₹${parsePrizeValue(battleFirstPrize).toLocaleString("en-IN")}`)
-                : "";
-              const formattedSecond = battleSecondPrize.trim()
-                ? (battleSecondPrize.includes("₹") ? battleSecondPrize.trim() : `₹${parsePrizeValue(battleSecondPrize).toLocaleString("en-IN")}`)
-                : "";
+              const formattedFirst = formatPrizeOrText(battleFirstPrize);
+              const formattedSecond = formatPrizeOrText(battleSecondPrize);
 
               // Update or append battle prize entry
               const updatedList = [...activeBattlePrizes];
@@ -4358,9 +4371,9 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
 
             const handleEditBattlePrize = (bp: any) => {
               setSelectedBattleId(bp.challengeId);
-              setBattlePrizeAmount(String(bp.prizeAmount || "").replace(/[^0-9]/g, ""));
-              setBattleFirstPrize(String(bp.firstPrize || "").replace(/[^0-9]/g, ""));
-              setBattleSecondPrize(String(bp.secondPrize || "").replace(/[^0-9]/g, ""));
+              setBattlePrizeAmount(String(bp.prizeAmount || ""));
+              setBattleFirstPrize(String(bp.firstPrize || ""));
+              setBattleSecondPrize(String(bp.secondPrize || ""));
               setBattlePerks(bp.perks || "");
               setBattlePrizeMsg(null);
             };
@@ -4914,9 +4927,9 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                           // Auto-fill if already configured
                           const existing = activeBattlePrizes.find(bp => bp.challengeId === val);
                           if (existing) {
-                            setBattlePrizeAmount(String(existing.prizeAmount || "").replace(/[^0-9]/g, ""));
-                            setBattleFirstPrize(String(existing.firstPrize || "").replace(/[^0-9]/g, ""));
-                            setBattleSecondPrize(String(existing.secondPrize || "").replace(/[^0-9]/g, ""));
+                            setBattlePrizeAmount(String(existing.prizeAmount || ""));
+                            setBattleFirstPrize(String(existing.firstPrize || ""));
+                            setBattleSecondPrize(String(existing.secondPrize || ""));
                             setBattlePerks(existing.perks || "");
                           } else {
                             setBattlePrizeAmount("");
@@ -4977,33 +4990,32 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                       </div>
                     </div>
 
-                    {/* Step 4: Optional 2nd Place Bounty */}
+                    {/* Step 4: Optional 2nd Place Bounty / Runner Up / Goodies */}
                     <div>
-                      <label className="block font-rajdhani text-xs font-bold text-[#F5D061] uppercase tracking-wider mb-1.5">
-                        4. Runner Up / 2nd Place Share (₹)
+                      <label className="block font-rajdhani text-xs font-bold text-[#F5D061] uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                        <span>4. Runner Up / 2nd Place Share (Cash / Goodies / Swags)</span>
+                        <span className="text-[10px] text-neutral-400 font-mono">e.g. ₹1,500 or Goodies</span>
                       </label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-2.5 text-neutral-400 font-mono text-sm">₹</span>
-                        <input
-                          type="text"
-                          value={battleSecondPrize}
-                          onChange={(e) => setBattleSecondPrize(e.target.value)}
-                          placeholder="e.g. 1500 or 10000"
-                          className="w-full bg-[#111722] border border-[#D4AF37]/40 text-white pl-8 pr-3 py-2 text-sm font-rajdhani focus:border-[#D4AF37] outline-none"
-                        />
-                      </div>
+                      <input
+                        type="text"
+                        value={battleSecondPrize}
+                        onChange={(e) => setBattleSecondPrize(e.target.value)}
+                        placeholder="e.g. ₹1,500 or Goodies or Swag Kit + Certificate"
+                        className="w-full bg-[#111722] border border-[#D4AF37]/40 text-white p-2 text-sm font-rajdhani focus:border-[#D4AF37] outline-none"
+                      />
                     </div>
 
-                    {/* Step 5: Bounty Perks & Trophies */}
+                    {/* Step 5: Bounty Perks & Trophies / Goodies */}
                     <div>
-                      <label className="block font-rajdhani text-xs font-bold text-[#F5D061] uppercase tracking-wider mb-1.5">
-                        5. Special Perks / Incubation / Trophies
+                      <label className="block font-rajdhani text-xs font-bold text-[#F5D061] uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                        <span>5. Additional Perks, Goodies & Trophies</span>
+                        <span className="text-[10px] text-neutral-400 font-mono">Shown on card & specs</span>
                       </label>
                       <input
                         type="text"
                         value={battlePerks}
                         onChange={(e) => setBattlePerks(e.target.value)}
-                        placeholder="e.g. Cloud Credits, VC Term-Sheet Screening, Custom Badges"
+                        placeholder="e.g. Winner Trophy, Goodies Bag, Cloud Credits, Certificates"
                         className="w-full bg-[#111722] border border-[#D4AF37]/40 text-white p-2 text-sm font-rajdhani focus:border-[#D4AF37] outline-none"
                       />
                     </div>
@@ -5433,7 +5445,11 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                         rulesPdfUrl: "",
                         judgingCriteria: "Novelty of algorithmic solution (35%)\nReal-world viability (35%)\nUX and execution (30%)",
                         skills: "Python, TypeScript, APIs",
-                        image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop"
+                        image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop",
+                        prizePool: "₹5,000",
+                        firstPrize: "₹3,500",
+                        secondPrize: "₹1,500 or Goodies",
+                        bountyNotes: "Winner Trophy, Goodies Bag, Cloud Credits"
                       };
                       setEditData({ ...editData, challenges: [...challenges, newChallenge] });
                     }}
@@ -5504,6 +5520,10 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                               judgingCriteria: parseList(ch.judgingCriteria),
                               skills: parseCsv(ch.skills),
                               image: ch.image || "",
+                              prizePool: ch.prizePool || "",
+                              firstPrize: ch.firstPrize || "",
+                              secondPrize: ch.secondPrize || "",
+                              bountyNotes: ch.bountyNotes || ch.perks || "",
                             } as Challenge);
                           }}
                           className="px-3 py-1 bg-[#55FF55]/15 hover:bg-[#55FF55]/30 border border-[#55FF55]/60 text-[#55FF55] font-rajdhani text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-all"
@@ -5671,6 +5691,78 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                         className="w-full bg-[#141b26] border border-[#DC2626]/50 text-white p-2 text-xs font-mono placeholder:text-neutral-500 focus:border-[#DC2626] outline-none"
                         placeholder="https://drive.google.com/file/d/.../view or direct PDF URL"
                       />
+                    </div>
+
+                    {/* Track Bounty & Rewards Breakdown (1st Place, Runner Up / Goodies & Perks) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 p-3 bg-[#111722] border border-[#55FF55]/30 sf-clip-angled-sm">
+                      <div>
+                        <label className="text-[10px] text-[#55FF55] font-bold uppercase block mb-1 flex items-center gap-1">
+                          <Trophy className="w-3 h-3 text-[#FFAA00]" />
+                          <span>Track Bounty (Total)</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={ch.prizePool || ""}
+                          onChange={(e) => {
+                            const updated = [...challenges];
+                            updated[idx] = { ...updated[idx], prizePool: e.target.value };
+                            setEditData({ ...editData, challenges: updated });
+                          }}
+                          className="w-full bg-[#0c1017] border border-[#55FF55]/40 text-[#55FF55] p-2 text-xs font-mono font-bold"
+                          placeholder="₹5,000"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-[#FFAA00] font-bold uppercase block mb-1 flex items-center gap-1">
+                          <Award className="w-3 h-3 text-[#FFAA00]" />
+                          <span>1st Place Share</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={ch.firstPrize || ""}
+                          onChange={(e) => {
+                            const updated = [...challenges];
+                            updated[idx] = { ...updated[idx], firstPrize: e.target.value };
+                            setEditData({ ...editData, challenges: updated });
+                          }}
+                          className="w-full bg-[#0c1017] border border-[#FFAA00]/40 text-white p-2 text-xs font-mono font-bold"
+                          placeholder="₹3,500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-[#55FF55] font-bold uppercase block mb-1 flex items-center gap-1">
+                          <Gift className="w-3 h-3 text-[#55FF55]" />
+                          <span>Runner Up (Cash / Goodies)</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={ch.secondPrize || ""}
+                          onChange={(e) => {
+                            const updated = [...challenges];
+                            updated[idx] = { ...updated[idx], secondPrize: e.target.value };
+                            setEditData({ ...editData, challenges: updated });
+                          }}
+                          className="w-full bg-[#0c1017] border border-[#55FF55]/40 text-white p-2 text-xs font-mono font-bold"
+                          placeholder="₹1,500 or Goodies"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-[#FFDF78] font-bold uppercase block mb-1 flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 text-[#FFAA00]" />
+                          <span>Goodies & Perks</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={ch.bountyNotes || ch.perks || ""}
+                          onChange={(e) => {
+                            const updated = [...challenges];
+                            updated[idx] = { ...updated[idx], bountyNotes: e.target.value, perks: e.target.value };
+                            setEditData({ ...editData, challenges: updated });
+                          }}
+                          className="w-full bg-[#0c1017] border border-[#D4AF37]/40 text-white p-2 text-xs font-rajdhani"
+                          placeholder="Winner Trophy, Goodies Bag, Cloud Credits"
+                        />
+                      </div>
                     </div>
 
                     {/* Row 3: Short Summary (Card Preview) */}

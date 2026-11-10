@@ -18,6 +18,7 @@ export interface Challenge {
   firstPrize?: string;
   secondPrize?: string;
   bountyNotes?: string;
+  perks?: string;
 }
 
 export interface BattlePrize {
