@@ -71,3 +71,4 @@ export function resetScrollImmediate(): void {
     window.scrollTo(0, 0);
   }
 }
+
