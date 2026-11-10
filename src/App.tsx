@@ -25,6 +25,7 @@ import SoundWidget from './components/SoundWidget';
 import { ContentProvider, useSiteContent } from './context/ContentContext';
 import { AudioProvider } from './context/AudioContext';
 import { Challenge } from './types';
+import { resetScrollImmediate } from './utils/scroll';
 
 const SECTIONS = [
   { id: 'hero', name: 'HERO', index: 1 },
@@ -61,11 +62,17 @@ function MainApp() {
   // Initialize Lenis smooth scroll
   useEffect(() => {
     const lenis = new Lenis({
-      lerp: 0.09,
-      wheelMultiplier: 1.1,
+      duration: 1.15,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      orientation: 'vertical',
+      gestureOrientation: 'vertical',
       smoothWheel: true,
+      wheelMultiplier: 1.0,
+      touchMultiplier: 1.2,
+      infinite: false,
     });
     lenisRef.current = lenis;
+    window.__lenis = lenis;
 
     let animationFrameId: number;
 
@@ -80,6 +87,7 @@ function MainApp() {
       cancelAnimationFrame(animationFrameId);
       lenis.destroy();
       lenisRef.current = null;
+      window.__lenis = undefined;
     };
   }, []);
 
@@ -104,25 +112,36 @@ function MainApp() {
     }
   }, [showAdmin]);
 
-  // Section Observer for active section in Navbar
+  // High-performance Section Observer for active section in Navbar (Off-thread, Zero layout reflow)
   useEffect(() => {
-    const handleScroll = () => {
-      const scrollY = window.scrollY + window.innerHeight / 3;
+    if (typeof window === 'undefined' || !('IntersectionObserver' in window)) return;
 
-      for (let i = SECTIONS.length - 1; i >= 0; i--) {
-        const el = document.getElementById(SECTIONS[i].id);
-        if (el) {
-          const top = el.offsetTop;
-          if (scrollY >= top) {
-            setCurrentSection(SECTIONS[i].name);
-            break;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+
+        if (visible.length > 0) {
+          const id = visible[0].target.id;
+          const match = SECTIONS.find((s) => s.id === id);
+          if (match) {
+            setCurrentSection((prev) => (prev === match.name ? prev : match.name));
           }
         }
+      },
+      {
+        rootMargin: '-20% 0px -40% 0px',
+        threshold: [0, 0.25, 0.5, 0.75, 1],
       }
-    };
+    );
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    SECTIONS.forEach((s) => {
+      const el = document.getElementById(s.id);
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
   }, []);
 
   // Registration handler — always redirects to Google Form URL configured by admin
@@ -190,11 +209,12 @@ function MainApp() {
     setShowGallery(false);
     setShowContact(false);
     setShowYourTeam(false);
-    window.scrollTo({ top: 0 });
+    resetScrollImmediate();
   };
 
   const handleCloseBattlegrounds = () => {
     setShowBattlegrounds(false);
+    setTimeout(() => lenisRef.current?.resize(), 50);
   };
 
   const handleOpenGallery = () => {
@@ -202,11 +222,12 @@ function MainApp() {
     setShowBattlegrounds(false);
     setShowContact(false);
     setShowYourTeam(false);
-    window.scrollTo({ top: 0 });
+    resetScrollImmediate();
   };
 
   const handleCloseGallery = () => {
     setShowGallery(false);
+    setTimeout(() => lenisRef.current?.resize(), 50);
   };
 
   const handleOpenContact = () => {
@@ -214,11 +235,12 @@ function MainApp() {
     setShowBattlegrounds(false);
     setShowGallery(false);
     setShowYourTeam(false);
-    window.scrollTo({ top: 0 });
+    resetScrollImmediate();
   };
 
   const handleCloseContact = () => {
     setShowContact(false);
+    setTimeout(() => lenisRef.current?.resize(), 50);
   };
 
   const handleOpenYourTeam = () => {
@@ -227,11 +249,12 @@ function MainApp() {
     setShowBattlegrounds(false);
     setShowGallery(false);
     setShowContact(false);
-    window.scrollTo({ top: 0 });
+    resetScrollImmediate();
   };
 
   const handleCloseYourTeam = () => {
     setShowYourTeam(false);
+    setTimeout(() => lenisRef.current?.resize(), 50);
   };
 
   const handleBattlegroundsRegister = (_challenge?: Challenge) => {

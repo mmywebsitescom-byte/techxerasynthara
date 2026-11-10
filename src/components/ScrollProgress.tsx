@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, useScroll, useSpring } from 'motion/react';
 import { Compass, ArrowUp } from 'lucide-react';
+import { smoothScrollTo } from '../utils/scroll';
 
 export default function ScrollProgress() {
   const { scrollYProgress } = useScroll();
@@ -12,17 +13,27 @@ export default function ScrollProgress() {
 
   const [percent, setPercent] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
+  const lastPercentRef = useRef(-1);
+  const lastVisibleRef = useRef(false);
 
   useEffect(() => {
     return scrollYProgress.on('change', (latest) => {
       const p = Math.round(latest * 100);
-      setPercent(p);
-      setIsVisible(latest > 0.05);
+      const vis = latest > 0.05;
+
+      if (p !== lastPercentRef.current) {
+        lastPercentRef.current = p;
+        setPercent(p);
+      }
+      if (vis !== lastVisibleRef.current) {
+        lastVisibleRef.current = vis;
+        setIsVisible(vis);
+      }
     });
   }, [scrollYProgress]);
 
   const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    smoothScrollTo(0, { offset: 0 });
   };
 
   return (

@@ -86,17 +86,18 @@ export default function CinematicBackground() {
         if (p.x < -10) p.x = width + 10;
         if (p.x > width + 10) p.x = -10;
 
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-
+        // Draw glowing outer aura if ember (hardware-accelerated, zero shadowBlur lag)
         if (p.glow) {
-          ctx.shadowBlur = 8;
-          ctx.shadowColor = 'rgba(255, 170, 0, 0.75)';
-        } else {
-          ctx.shadowBlur = 0;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius * 2.5, 0, Math.PI * 2);
+          ctx.fillStyle = `${p.color}${(p.alpha * 0.22).toFixed(3)})`;
+          ctx.fill();
         }
 
-        ctx.fillStyle = `${p.color}${Math.max(0, p.alpha)})`;
+        // Draw crisp spark core
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `${p.color}${Math.max(0, p.alpha).toFixed(3)})`;
         ctx.fill();
       }
 

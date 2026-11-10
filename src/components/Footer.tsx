@@ -1,6 +1,7 @@
 import { Mail, MapPin, Calendar, ArrowUp } from 'lucide-react';
 import { useSiteContent } from '../context/ContentContext';
 import SkeletonImage from './SkeletonImage';
+import { smoothScrollTo } from '../utils/scroll';
 
 function formatExternalUrl(url?: string, platform?: string): string {
   if (!url || !url.trim()) return '';
@@ -52,7 +53,7 @@ export default function Footer() {
   const isRegOpen = regForm.isOpen !== false;
 
   const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    smoothScrollTo(0, { offset: 0 });
   };
 
   const socials = [

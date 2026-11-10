@@ -2,6 +2,7 @@ import { motion } from 'motion/react';
 import { Terminal, ChevronDown, Swords, ExternalLink, Lock } from 'lucide-react';
 import Countdown from './Countdown';
 import { useSiteContent } from '../context/ContentContext';
+import { smoothScrollTo } from '../utils/scroll';
 
 interface HeroProps {
   onOpenBattlegrounds: () => void;
@@ -14,8 +15,7 @@ export default function Hero({ onOpenBattlegrounds }: HeroProps) {
   const regForm = content?.registrationForm || {};
 
   const scrollToBattlegrounds = () => {
-    const el = document.getElementById('challenges');
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
+    smoothScrollTo('#challenges', { offset: -70 });
   };
 
   const seatsClaimed = hero.seatsClaimed ?? 184;

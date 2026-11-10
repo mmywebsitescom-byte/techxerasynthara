@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'motion/react';
 import { ArrowRight, Terminal } from 'lucide-react';
 import { useSiteContent } from '../context/ContentContext';
+import { smoothScrollTo } from '../utils/scroll';
 
 interface FinalCTAProps {
   onOpenRegister: () => void;
@@ -20,10 +21,7 @@ export default function FinalCTA({ onOpenRegister }: FinalCTAProps) {
   const bgScale = useTransform(scrollYProgress, [0, 0.5, 1], [1.12, 1.05, 1.12]);
 
   const scrollToBattlegrounds = () => {
-    const el = document.getElementById('challenges');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-    }
+    smoothScrollTo('#challenges', { offset: -70 });
   };
 
   const badge = cta.badge || 'OFFLINE REGISTRATION WINDOW IS LIVE';

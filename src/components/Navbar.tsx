@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { Menu, X, Swords, Camera, Phone, Users } from 'lucide-react';
 import { useSiteContent } from '../context/ContentContext';
 import SkeletonImage from './SkeletonImage';
+import { smoothScrollTo } from '../utils/scroll';
 
 interface NavbarProps {
   onOpenRegister: () => void;
@@ -21,26 +22,32 @@ export default function Navbar({ onOpenRegister, activeSection, onOpenBattlegrou
   const navbar = content?.navbar || {};
   const partners = Array.isArray(content?.partners) ? content.partners : [];
 
-  // Scroll detection: header bar moves back (retracts) on scroll down, partner bar does not move
+  // High-performance scroll detection with RAF throttling
   useEffect(() => {
+    let ticking = false;
+
     const handleScroll = () => {
-      const currentScrollY = window.scrollY;
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = window.scrollY;
+          const diff = currentScrollY - lastScrollY.current;
 
-      if (currentScrollY > 30) {
-        if (currentScrollY > lastScrollY.current && currentScrollY > 80) {
-          // Scrolling down: header moves back (hides out of view)
-          setHideNav(true);
-          setMobileMenuOpen(false);
-        } else if (currentScrollY < lastScrollY.current) {
-          // Scrolling up: header smoothly returns
-          setHideNav(false);
-        }
-      } else {
-        // Near top of page: header fully visible
-        setHideNav(false);
+          if (currentScrollY > 30) {
+            if (diff > 6 && currentScrollY > 80) {
+              setHideNav((prev) => (prev ? prev : true));
+              setMobileMenuOpen(false);
+            } else if (diff < -6) {
+              setHideNav((prev) => (!prev ? prev : false));
+            }
+          } else {
+            setHideNav((prev) => (!prev ? prev : false));
+          }
+
+          lastScrollY.current = currentScrollY;
+          ticking = false;
+        });
+        ticking = true;
       }
-
-      lastScrollY.current = currentScrollY;
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -172,6 +179,12 @@ export default function Navbar({ onOpenRegister, activeSection, onOpenBattlegrou
                 <a
                   key={link.name}
                   href={link.href}
+                  onClick={(e) => {
+                    if (link.href.startsWith('#')) {
+                      e.preventDefault();
+                      smoothScrollTo(link.href);
+                    }
+                  }}
                   className={`relative px-2.5 py-1.5 font-cinzel font-bold text-xs uppercase tracking-[0.15em] transition-all duration-200 inline-flex items-center gap-1 whitespace-nowrap shrink-0 ${isActive
                       ? 'text-[#F5D061] [text-shadow:0_0_12px_rgba(212,175,55,0.6)]'
                       : 'text-neutral-300 hover:text-[#F5D061] hover:[text-shadow:0_0_10px_rgba(212,175,55,0.4)]'
@@ -273,7 +286,13 @@ export default function Navbar({ onOpenRegister, activeSection, onOpenBattlegrou
                   <a
                     key={link.name}
                     href={link.href}
-                    onClick={() => setMobileMenuOpen(false)}
+                    onClick={(e) => {
+                      setMobileMenuOpen(false);
+                      if (link.href.startsWith('#')) {
+                        e.preventDefault();
+                        smoothScrollTo(link.href);
+                      }
+                    }}
                     className="block font-cinzel font-bold text-xs uppercase tracking-[0.16em] text-neutral-300 hover:text-[#F5D061] hover:bg-[#141a24]/60 p-2.5 border-l-2 border-transparent hover:border-[#D4AF37] transition-all"
                   >
                     {link.name}

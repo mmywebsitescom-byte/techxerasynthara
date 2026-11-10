@@ -1,4 +1,33 @@
 @import "tailwindcss";
+@import "lenis/dist/lenis.css";
+
+/* ==========================================================================
+   LENIS ULTRA-SMOOTH SCROLL ENGINE OPTIMIZATIONS
+   ========================================================================== */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+html.lenis {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: clip;
+}
+
+.lenis.lenis-smooth iframe {
+  pointer-events: none;
+}
 
 @layer base {
   :root {
