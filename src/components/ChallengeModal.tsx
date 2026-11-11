@@ -18,26 +18,47 @@ export default function ChallengeModal({
 }: ChallengeModalProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Lock background scroll when modal is open and handle Escape key
+  // Handle mobile Back button & lock background scroll
   useEffect(() => {
     if (!isOpen) return;
 
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
+    // Push state so phone back button/gesture closes this modal without leaving the website
+    window.history.pushState({ modal: 'challenge-modal' }, '');
+
+    const handlePopState = () => {
+      onClose();
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        if (window.history.state?.modal === 'challenge-modal') {
+          window.history.back();
+        } else {
+          onClose();
+        }
       }
     };
 
+    window.addEventListener('popstate', handlePopState);
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
       document.body.style.overflow = originalOverflow;
+      window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, onClose]);
+
+  const handleClose = () => {
+    if (window.history.state?.modal === 'challenge-modal') {
+      window.history.back();
+    } else {
+      onClose();
+    }
+  };
 
   // When a new challenge is opened, scroll the modal body back to top
   useEffect(() => {
@@ -76,7 +97,7 @@ export default function ChallengeModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onClick={onClose}
+          onClick={handleClose}
           className="fixed inset-0 bg-black/90 backdrop-blur-sm cursor-pointer"
           style={{ zIndex: 0 }}
         />
@@ -100,7 +121,7 @@ export default function ChallengeModal({
             </div>
             <button
               id="close-challenge-modal-btn"
-              onClick={onClose}
+              onClick={handleClose}
               className="w-7 h-7 bg-[#DBDBDB] hover:bg-[#EAEAEA] active:bg-[#BFBFBF] border-2 border-t-[#FFFFFF] border-l-[#FFFFFF] border-r-[#555555] border-b-[#555555] text-black font-black flex items-center justify-center active:translate-y-0.5 cursor-pointer shrink-0 transition-transform"
               aria-label="Close modal"
               title="Close (Esc)"
@@ -324,7 +345,7 @@ export default function ChallengeModal({
           <div className="shrink-0 bg-[#C6C6C6] p-3 sm:p-4 border-t-2 border-[#555555] flex flex-col sm:flex-row items-center justify-between gap-3 shadow-[0_-2px_6px_rgba(0,0,0,0.15)]">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="w-full sm:w-auto px-6 py-2.5 bg-[#DBDBDB] hover:bg-[#EAEAEA] active:bg-[#BFBFBF] text-black font-mono font-black text-xs uppercase tracking-wider border-3 border-t-[#FFFFFF] border-l-[#FFFFFF] border-r-[#555555] border-b-[#555555] shadow-[2px_2px_0px_#000] cursor-pointer transition-transform active:translate-y-0.5"
             >
               RETURN TO LIST

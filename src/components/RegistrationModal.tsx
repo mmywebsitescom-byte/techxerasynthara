@@ -68,6 +68,48 @@ export default function RegistrationModal({ isOpen, onClose, preSelectedChalleng
     }
   }, [isOpen]);
 
+  // Handle mobile Back button & lock background scroll
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    // Push history state so mobile hardware/gesture Back button closes this modal without exiting the website
+    window.history.pushState({ modal: 'register-modal' }, '');
+
+    const handlePopState = () => {
+      onClose();
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (window.history.state?.modal === 'register-modal') {
+          window.history.back();
+        } else {
+          onClose();
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
+  const handleClose = () => {
+    if (window.history.state?.modal === 'register-modal') {
+      window.history.back();
+    } else {
+      onClose();
+    }
+  };
+
   const handleSignup = (e: React.FormEvent) => {
     e.preventDefault();
     setSignupError('');
@@ -160,7 +202,7 @@ export default function RegistrationModal({ isOpen, onClose, preSelectedChalleng
 
   const resetForm = () => {
     setTicket(null);
-    onClose();
+    handleClose();
   };
 
   if (!isOpen) return null;
@@ -173,7 +215,7 @@ export default function RegistrationModal({ isOpen, onClose, preSelectedChalleng
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
+            onClick={handleClose}
             className="fixed inset-0 bg-black/85 backdrop-blur-sm"
           />
           <motion.div
@@ -185,7 +227,7 @@ export default function RegistrationModal({ isOpen, onClose, preSelectedChalleng
             <div className="sf-bracket-tl" /><div className="sf-bracket-tr" />
             <div className="sf-bracket-bl" /><div className="sf-bracket-br" />
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="absolute top-4 right-4 text-neutral-400 hover:text-white p-1 cursor-pointer"
             >
               <X className="w-4 h-4" />
@@ -203,7 +245,7 @@ export default function RegistrationModal({ isOpen, onClose, preSelectedChalleng
             </p>
             <div className="pt-2">
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="w-full py-2.5 sf-btn-gold sf-clip-angled font-cinzel text-xs font-bold uppercase tracking-wider cursor-pointer"
               >
                 RETURN TO ARENA
@@ -229,7 +271,7 @@ export default function RegistrationModal({ isOpen, onClose, preSelectedChalleng
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onClick={step === 'success' ? resetForm : onClose}
+          onClick={step === 'success' ? resetForm : handleClose}
           className="fixed inset-0 bg-black/85 backdrop-blur-sm"
         />
 
@@ -264,7 +306,7 @@ export default function RegistrationModal({ isOpen, onClose, preSelectedChalleng
             </div>
             <button
               id="close-registration-modal-btn"
-              onClick={step === 'success' ? resetForm : onClose}
+              onClick={step === 'success' ? resetForm : handleClose}
               className="w-8 h-8 border border-[#D4AF37]/30 hover:border-[#D4AF37]/70 bg-[#D4AF37]/5 hover:bg-[#D4AF37]/15 text-neutral-400 hover:text-[#F5D061] flex items-center justify-center transition-all cursor-pointer"
               aria-label="Close Registration Dialog"
             >

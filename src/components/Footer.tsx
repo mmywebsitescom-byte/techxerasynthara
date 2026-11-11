@@ -133,9 +133,15 @@ export default function Footer() {
           {/* Quick Links / Socials */}
           <div className="lg:col-span-3 space-y-3">
             <div className="font-mono text-xs font-bold text-white uppercase tracking-wider">
-              COMMUNITY LINKS
+              COMMUNITY & ALLIANCES
             </div>
             <div className="flex flex-wrap gap-2">
+              <a
+                href="#sponsors"
+                className="px-2.5 py-1 bg-[#FFAA00]/20 border-2 border-t-[#FFAA00] border-l-[#FFAA00] border-r-[#885500] border-b-[#885500] text-[#FFAA00] hover:text-white text-[10px] font-bold transition-colors cursor-pointer"
+              >
+                SPONSORS
+              </a>
               {socials.map((item) => (
                 <a
                   key={item.name}

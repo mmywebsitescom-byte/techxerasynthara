@@ -119,15 +119,26 @@ export interface GalleryItem {
 export interface Partner {
   id: string;
   name: string;
-  tier: 'Title Partner' | 'Platinum' | 'Gold' | 'Ecosystem' | string;
+  tier: 'Title Partner' | 'Platinum' | 'Gold' | 'Silver' | 'Ecosystem' | string;
   logoText?: string;
   logoUrl?: string;
   category?: string;
   perk?: string;
   websiteUrl?: string;
+  description?: string;
 }
 
-export type Sponsor = Partner;
+export interface Sponsor {
+  id: string;
+  name: string;
+  tier: 'Title Partner' | 'Platinum' | 'Gold' | 'Silver' | 'Ecosystem' | string;
+  logoText?: string;
+  logoUrl?: string;
+  category?: string;
+  perk?: string;
+  websiteUrl?: string;
+  description?: string;
+}
 
 export interface FAQItem {
   question: string;

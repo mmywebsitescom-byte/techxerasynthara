@@ -20,13 +20,17 @@ export default function Partners() {
   const bgY = useTransform(scrollYProgress, [0, 1], ['-8%', '8%']);
   const bgScale = useTransform(scrollYProgress, [0, 0.5, 1], [1.1, 1.04, 1.1]);
 
-  const isLocked = content?.eventControl?.partnersLocked === true || content?.eventControl?.sponsorsLocked === true;
-  const lockedMsg = String(content?.eventControl?.partnersLockedMessage || content?.eventControl?.sponsorsLockedMessage || "PARTNER ALLIANCES ARE CURRENTLY CLASSIFIED. OFFICIAL PARTNERS WILL BE UNVEILED CLOSER TO LAUNCH.");
+  const isLocked = content?.eventControl?.partnersLocked === true || content?.partnersLocked === true;
+  const lockedMsg = String(
+    content?.partnersLockedMessage ||
+    content?.eventControl?.partnersLockedMessage ||
+    "PARTNER ALLIANCES ARE CURRENTLY CLASSIFIED. OFFICIAL PARTNERS WILL BE UNVEILED CLOSER TO LAUNCH."
+  );
 
-  // Only display partners from Supabase database (no mock data fallback)
+  // Strictly display partners from Supabase database (distinct from sponsors)
   const rawPartners: any[] = Array.isArray(content.partners) && content.partners.length > 0
     ? content.partners
-    : (Array.isArray(content.sponsors) && content.sponsors.length > 0 ? content.sponsors : []);
+    : [];
 
   const allPartners: Partner[] = rawPartners.map((s, idx) => ({
     id: s.id || `pt-${idx}`,

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Menu, X, Swords, Camera, Phone, Users } from 'lucide-react';
+import { Menu, X, Swords, Camera, Phone, Users, Sparkles, Lock } from 'lucide-react';
 import { useSiteContent } from '../context/ContentContext';
 import SkeletonImage from './SkeletonImage';
 import { smoothScrollTo } from '../utils/scroll';
@@ -54,6 +54,51 @@ export default function Navbar({ onOpenRegister, activeSection, onOpenBattlegrou
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Handle mobile Back button for mobile drawer menu
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+
+    window.history.pushState({ modal: 'mobile-menu' }, '');
+
+    const handlePopState = () => {
+      setMobileMenuOpen(false);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (window.history.state?.modal === 'mobile-menu') {
+          window.history.back();
+        } else {
+          setMobileMenuOpen(false);
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [mobileMenuOpen]);
+
+  const closeMobileMenu = () => {
+    if (window.history.state?.modal === 'mobile-menu') {
+      window.history.back();
+    } else {
+      setMobileMenuOpen(false);
+    }
+  };
+
+  const handleToggleMobileMenu = () => {
+    if (mobileMenuOpen) {
+      closeMobileMenu();
+    } else {
+      setMobileMenuOpen(true);
+    }
+  };
+
   // Ensure enough partner items for seamless infinite marquee loop
   const marqueePartners = partners.length > 0
     ? [...partners, ...partners, ...partners, ...partners].slice(0, Math.max(12, partners.length * 4))
@@ -63,6 +108,7 @@ export default function Navbar({ onOpenRegister, activeSection, onOpenBattlegrou
     { name: 'ABOUT', href: '#mission' },
     { name: 'TIMELINE', href: '#timeline' },
     { name: 'PRIZES', href: '#prizes' },
+    { name: 'SPONSORS', href: '#sponsors' },
     { name: 'PARTNERS', href: '#partners' },
   ];
 
@@ -236,7 +282,7 @@ export default function Navbar({ onOpenRegister, activeSection, onOpenBattlegrou
             {/* Mobile Hamburger Toggle */}
             <button
               id="mobile-menu-toggle-btn"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              onClick={handleToggleMobileMenu}
               className="lg:hidden w-9 h-9 bg-[#141a24] border border-[#D4AF37]/40 sf-clip-angled-sm flex items-center justify-center text-[#F5D061] cursor-pointer"
               aria-label="Toggle navigation menu"
             >
@@ -287,7 +333,7 @@ export default function Navbar({ onOpenRegister, activeSection, onOpenBattlegrou
                     key={link.name}
                     href={link.href}
                     onClick={(e) => {
-                      setMobileMenuOpen(false);
+                      closeMobileMenu();
                       if (link.href.startsWith('#')) {
                         e.preventDefault();
                         smoothScrollTo(link.href);
@@ -302,7 +348,7 @@ export default function Navbar({ onOpenRegister, activeSection, onOpenBattlegrou
                 <div className="pt-3">
                   <button
                     onClick={() => {
-                      setMobileMenuOpen(false);
+                      closeMobileMenu();
                       onOpenRegister();
                     }}
                     className="w-full py-3.5 sf-btn-crimson sf-clip-angled text-xs flex items-center justify-center gap-2 cursor-pointer"

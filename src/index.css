@@ -589,14 +589,16 @@ html.lenis {
   }
 }
 
-.animate-squad-marquee {
+.animate-squad-marquee,
+.animate-sponsor-marquee {
   display: flex;
   width: max-content;
   animation: squadMarquee 36s linear infinite;
   will-change: transform;
 }
 
-.animate-squad-marquee:hover {
+.animate-squad-marquee:hover,
+.animate-sponsor-marquee:hover {
   animation-play-state: paused;
 }
 

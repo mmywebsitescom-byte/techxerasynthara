@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Camera, X, ChevronLeft, Image } from 'lucide-react';
 import { GalleryItem } from '../types';
@@ -13,6 +13,48 @@ export default function GalleryPage({ onBack }: GalleryPageProps) {
   const { content } = useSiteContent();
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [lightboxItem, setLightboxItem] = useState<GalleryItem | null>(null);
+
+  // Handle mobile Back button & lock background scroll for lightbox
+  useEffect(() => {
+    if (!lightboxItem) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    // Push history state so mobile gesture/hardware Back button closes lightbox without exiting the page
+    window.history.pushState({ modal: 'gallery-lightbox' }, '');
+
+    const handlePopState = () => {
+      setLightboxItem(null);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (window.history.state?.modal === 'gallery-lightbox') {
+          window.history.back();
+        } else {
+          setLightboxItem(null);
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [lightboxItem]);
+
+  const handleCloseLightbox = () => {
+    if (window.history.state?.modal === 'gallery-lightbox') {
+      window.history.back();
+    } else {
+      setLightboxItem(null);
+    }
+  };
 
   const categories = ['ALL', 'EVENT', 'TEAMS', 'PROJECTS', 'WORKSHOPS', 'WINNERS'];
 
@@ -162,7 +204,7 @@ export default function GalleryPage({ onBack }: GalleryPageProps) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setLightboxItem(null)}
+              onClick={handleCloseLightbox}
               className="fixed inset-0 bg-black/92"
             />
             <motion.div
@@ -174,7 +216,7 @@ export default function GalleryPage({ onBack }: GalleryPageProps) {
               <div className="bg-[#2A2A2A] text-white px-3 py-2 flex items-center justify-between border-b-2 border-[#555555]">
                 <span className="font-mono text-xs font-bold uppercase">{lightboxItem.title}</span>
                 <button
-                  onClick={() => setLightboxItem(null)}
+                  onClick={handleCloseLightbox}
                   className="w-6 h-6 bg-[#DBDBDB] text-black font-black flex items-center justify-center border border-black cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />

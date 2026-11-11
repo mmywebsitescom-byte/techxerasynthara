@@ -35,7 +35,7 @@ const SECTIONS = [
   { id: 'how-it-works', name: 'WARRIOR PATH', index: 5 },
   { id: 'timeline', name: 'TIMELINE', index: 6 },
   { id: 'prizes', name: 'CHAMPIONS', index: 7 },
-  { id: 'teams', name: 'SQUADS', index: 8 },
+  { id: 'sponsors', name: 'SPONSORS', index: 8 },
   { id: 'partners', name: 'PARTNERS', index: 9 },
   { id: 'faq', name: 'RULES', index: 10 },
 ];
@@ -157,16 +157,40 @@ function MainApp() {
   // Your Team lock state
   const isTeamLocked = content?.yourTeamLocked === true || eventControl?.yourTeamLocked === true;
 
-  // Sync /admin URL routing
+  // Sync URL routing, sub-pages & browser back/forward buttons (Mobile gesture/hardware Back support)
   useEffect(() => {
     const handleUrlChange = () => {
-      setShowAdmin(checkIsAdminUrl());
+      const isAdmin = checkIsAdminUrl();
+      setShowAdmin(isAdmin);
+
       const hash = window.location.hash.toLowerCase();
-      if ((hash === '#your-team' || hash === '#team') && !isTeamLocked) {
+
+      if (hash === '#battlegrounds') {
+        setShowBattlegrounds(true);
+        setShowGallery(false);
+        setShowContact(false);
+        setShowYourTeam(false);
+      } else if (hash === '#gallery') {
+        setShowGallery(true);
+        setShowBattlegrounds(false);
+        setShowContact(false);
+        setShowYourTeam(false);
+      } else if (hash === '#contact') {
+        setShowContact(true);
+        setShowBattlegrounds(false);
+        setShowGallery(false);
+        setShowYourTeam(false);
+      } else if ((hash === '#your-team' || hash === '#team') && !isTeamLocked) {
         setShowYourTeam(true);
         setShowBattlegrounds(false);
         setShowGallery(false);
         setShowContact(false);
+      } else {
+        // Returned to home landing page (via mobile back gesture/button or navigation)
+        setShowBattlegrounds(false);
+        setShowGallery(false);
+        setShowContact(false);
+        setShowYourTeam(false);
       }
     };
 
@@ -210,10 +234,21 @@ function MainApp() {
     setShowContact(false);
     setShowYourTeam(false);
     resetScrollImmediate();
+    if (window.location.hash.toLowerCase() !== '#battlegrounds') {
+      if (window.history.state?.modal === 'mobile-menu') {
+        window.history.replaceState({ page: 'battlegrounds' }, '', '#battlegrounds');
+      } else {
+        window.history.pushState({ page: 'battlegrounds' }, '', '#battlegrounds');
+      }
+    }
   };
 
   const handleCloseBattlegrounds = () => {
-    setShowBattlegrounds(false);
+    if (window.location.hash.toLowerCase() === '#battlegrounds') {
+      window.history.back();
+    } else {
+      setShowBattlegrounds(false);
+    }
     setTimeout(() => lenisRef.current?.resize(), 50);
   };
 
@@ -223,10 +258,21 @@ function MainApp() {
     setShowContact(false);
     setShowYourTeam(false);
     resetScrollImmediate();
+    if (window.location.hash.toLowerCase() !== '#gallery') {
+      if (window.history.state?.modal === 'mobile-menu') {
+        window.history.replaceState({ page: 'gallery' }, '', '#gallery');
+      } else {
+        window.history.pushState({ page: 'gallery' }, '', '#gallery');
+      }
+    }
   };
 
   const handleCloseGallery = () => {
-    setShowGallery(false);
+    if (window.location.hash.toLowerCase() === '#gallery') {
+      window.history.back();
+    } else {
+      setShowGallery(false);
+    }
     setTimeout(() => lenisRef.current?.resize(), 50);
   };
 
@@ -236,10 +282,21 @@ function MainApp() {
     setShowGallery(false);
     setShowYourTeam(false);
     resetScrollImmediate();
+    if (window.location.hash.toLowerCase() !== '#contact') {
+      if (window.history.state?.modal === 'mobile-menu') {
+        window.history.replaceState({ page: 'contact' }, '', '#contact');
+      } else {
+        window.history.pushState({ page: 'contact' }, '', '#contact');
+      }
+    }
   };
 
   const handleCloseContact = () => {
-    setShowContact(false);
+    if (window.location.hash.toLowerCase() === '#contact') {
+      window.history.back();
+    } else {
+      setShowContact(false);
+    }
     setTimeout(() => lenisRef.current?.resize(), 50);
   };
 
@@ -250,10 +307,21 @@ function MainApp() {
     setShowGallery(false);
     setShowContact(false);
     resetScrollImmediate();
+    if (window.location.hash.toLowerCase() !== '#your-team') {
+      if (window.history.state?.modal === 'mobile-menu') {
+        window.history.replaceState({ page: 'your-team' }, '', '#your-team');
+      } else {
+        window.history.pushState({ page: 'your-team' }, '', '#your-team');
+      }
+    }
   };
 
   const handleCloseYourTeam = () => {
-    setShowYourTeam(false);
+    if (window.location.hash.toLowerCase() === '#your-team' || window.location.hash.toLowerCase() === '#team') {
+      window.history.back();
+    } else {
+      setShowYourTeam(false);
+    }
     setTimeout(() => lenisRef.current?.resize(), 50);
   };
 

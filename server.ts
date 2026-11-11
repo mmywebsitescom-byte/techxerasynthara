@@ -362,10 +362,9 @@ app.get('/api/admin/registrations', requireAdmin, async (_req, res) => {
 // Helper to keep individual relational tables in Supabase in sync
 async function syncSectionToRelationalTables(section: string, data: any) {
   try {
-    if (section === 'partners' || section === 'sponsors') {
+    if (section === 'partners') {
       const list = Array.isArray(data) ? data : [];
       await dbPool.query('DELETE FROM partners;');
-      await dbPool.query('DELETE FROM sponsors;');
       for (const p of list) {
         await dbPool.query(
           `INSERT INTO partners (id, name, tier, category, perk, logo_url, website_url, created_at)
@@ -387,6 +386,11 @@ async function syncSectionToRelationalTables(section: string, data: any) {
             p.websiteUrl || p.website_url || '',
           ]
         );
+      }
+    } else if (section === 'sponsors') {
+      const list = Array.isArray(data) ? data : [];
+      await dbPool.query('DELETE FROM sponsors;');
+      for (const p of list) {
         await dbPool.query(
           `INSERT INTO sponsors (id, name, tier, category, logo_url, website_url, created_at)
            VALUES ($1, $2, $3, $4, $5, $6, now())
@@ -398,7 +402,7 @@ async function syncSectionToRelationalTables(section: string, data: any) {
              website_url = EXCLUDED.website_url`,
           [
             p.id || `sp-${Date.now()}`,
-            p.name || 'Official Partner',
+            p.name || 'Official Sponsor',
             p.tier || 'Gold',
             p.category || 'Developer Ecosystem & Grants',
             p.logoUrl || p.logo_url || '',
@@ -540,6 +544,7 @@ app.put('/api/admin/content', requireAdmin, async (req, res) => {
     }
     await saveSiteContentToDb(updated);
     if (updated.partners) await syncSectionToRelationalTables('partners', updated.partners);
+    if (updated.sponsors) await syncSectionToRelationalTables('sponsors', updated.sponsors);
     if (updated.gallery) await syncSectionToRelationalTables('gallery', updated.gallery);
     if (updated.challenges) await syncSectionToRelationalTables('challenges', updated.challenges);
     if (updated.faq) await syncSectionToRelationalTables('faq', updated.faq);

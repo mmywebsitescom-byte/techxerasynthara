@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'motion/react';
 import Prizes from './Prizes';
-import Teams from './Teams';
+import Sponsors from './Sponsors';
 
 export default function PrizesAndTeamsSection() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -47,8 +47,8 @@ export default function PrizesAndTeamsSection() {
         <div className="h-[2px] bg-gradient-to-r from-transparent via-[#FFAA00]/40 to-transparent" />
       </div>
 
-      {/* Featured Squads Section */}
-      <Teams />
+      {/* Official Sponsors Scrolling Logos Section */}
+      <Sponsors />
     </div>
   );
 }

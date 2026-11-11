@@ -23,6 +23,8 @@ export interface SiteContent {
     countdownTargetDate?: string;
     battlegroundsLocked?: boolean;
     battlegroundsLockedMessage?: string;
+    partnersLocked?: boolean;
+    partnersLockedMessage?: string;
     sponsorsLocked?: boolean;
     sponsorsLockedMessage?: string;
     yourTeamLocked?: boolean;
@@ -133,6 +135,10 @@ export interface SiteContent {
   yourTeamCategories?: string[];
   yourTeamLocked?: boolean;
   yourTeamLockedMessage?: string;
+  partnersLocked?: boolean;
+  partnersLockedMessage?: string;
+  sponsorsLocked?: boolean;
+  sponsorsLockedMessage?: string;
   faq: Array<{
     id: string;
     question: string;
@@ -284,6 +290,8 @@ export const initialFallbackContent: SiteContent = {
     countdownTargetDate: "2026-10-16T09:00:00Z",
     battlegroundsLocked: false,
     battlegroundsLockedMessage: "BATTLEGROUNDS INTEL IS CLASSIFIED. CHECK BACK CLOSER TO THE EVENT DATE.",
+    partnersLocked: false,
+    partnersLockedMessage: "PARTNER ALLIANCES ARE CURRENTLY CLASSIFIED. OFFICIAL PARTNERS WILL BE UNVEILED CLOSER TO LAUNCH.",
     sponsorsLocked: false,
     sponsorsLockedMessage: "SPONSOR ALLIANCES ARE CURRENTLY CLASSIFIED. OFFICIAL PARTNERS WILL BE UNVEILED CLOSER TO LAUNCH.",
     yourTeamLocked: false,
@@ -381,6 +389,10 @@ export const initialFallbackContent: SiteContent = {
   ],
   yourTeamLocked: false,
   yourTeamLockedMessage: "TEAM ROSTER IS CLASSIFIED. CHECK BACK CLOSER TO THE EVENT DATE.",
+  partnersLocked: false,
+  partnersLockedMessage: "PARTNER ALLIANCES ARE CURRENTLY CLASSIFIED. OFFICIAL PARTNERS WILL BE UNVEILED CLOSER TO LAUNCH.",
+  sponsorsLocked: false,
+  sponsorsLockedMessage: "SPONSOR ALLIANCES ARE CURRENTLY CLASSIFIED. OFFICIAL PARTNERS WILL BE UNVEILED CLOSER TO LAUNCH.",
   faq: [],
   footer: {
     contactEmail: "codebreakers@gcekbpatna.ac.in",
@@ -473,21 +485,135 @@ export const initialFallbackContent: SiteContent = {
   registrations: []
 };
 
-interface ContentContextType {
+export const CONTENT_CACHE_KEY = 'santhera_site_content_cache';
+
+export function mergeSiteContent(prev: SiteContent, data: Record<string, any>): SiteContent {
+  if (!data || typeof data !== 'object') return prev;
+
+  const yourTeamLocked = typeof data.yourTeamLocked === 'boolean'
+    ? data.yourTeamLocked
+    : (typeof data.eventControl?.yourTeamLocked === 'boolean'
+      ? data.eventControl.yourTeamLocked
+      : (prev.yourTeamLocked ?? false));
+
+  const yourTeamLockedMessage = typeof data.yourTeamLockedMessage === 'string'
+    ? data.yourTeamLockedMessage
+    : (typeof data.eventControl?.yourTeamLockedMessage === 'string'
+      ? data.eventControl.yourTeamLockedMessage
+      : (prev.yourTeamLockedMessage ?? "TEAM ROSTER IS CLASSIFIED. CHECK BACK CLOSER TO THE EVENT DATE."));
+
+  const partnersLocked = typeof data.partnersLocked === 'boolean'
+    ? data.partnersLocked
+    : (typeof data.eventControl?.partnersLocked === 'boolean'
+      ? data.eventControl.partnersLocked
+      : (prev.partnersLocked ?? false));
+
+  const partnersLockedMessage = typeof data.partnersLockedMessage === 'string'
+    ? data.partnersLockedMessage
+    : (typeof data.eventControl?.partnersLockedMessage === 'string'
+      ? data.eventControl.partnersLockedMessage
+      : (prev.partnersLockedMessage ?? "PARTNER ALLIANCES ARE CURRENTLY CLASSIFIED. OFFICIAL PARTNERS WILL BE UNVEILED CLOSER TO LAUNCH."));
+
+  const sponsorsLocked = typeof data.sponsorsLocked === 'boolean'
+    ? data.sponsorsLocked
+    : (typeof data.eventControl?.sponsorsLocked === 'boolean'
+      ? data.eventControl.sponsorsLocked
+      : (prev.sponsorsLocked ?? false));
+
+  const sponsorsLockedMessage = typeof data.sponsorsLockedMessage === 'string'
+    ? data.sponsorsLockedMessage
+    : (typeof data.eventControl?.sponsorsLockedMessage === 'string'
+      ? data.eventControl.sponsorsLockedMessage
+      : (prev.sponsorsLockedMessage ?? "SPONSOR ALLIANCES ARE CURRENTLY CLASSIFIED. OFFICIAL SPONSORS WILL BE UNVEILED CLOSER TO LAUNCH."));
+
+  return {
+    ...prev,
+    ...data,
+    eventInfo: { ...prev.eventInfo, ...(data.eventInfo || {}) },
+    eventControl: { ...prev.eventControl, ...(data.eventControl || {}) },
+    hero: { ...prev.hero, ...(data.hero || {}) },
+    navbar: { ...prev.navbar, ...(data.navbar || {}) },
+    mission: { ...prev.mission, ...(data.mission || {}) },
+    stats: { ...prev.stats, ...(data.stats || {}) },
+    prizes: { ...prev.prizes, ...(data.prizes || {}) },
+    footer: { ...prev.footer, ...(data.footer || {}) },
+    registrationForm: { ...prev.registrationForm, ...(data.registrationForm || {}) },
+    battlegrounds: { ...prev.battlegrounds, ...(data.battlegrounds || {}) },
+    challenges: Array.isArray(data.challenges) ? data.challenges : prev.challenges,
+    timeline: Array.isArray(data.timeline) ? data.timeline : prev.timeline,
+    partners: Array.isArray(data.partners) ? data.partners : prev.partners,
+    sponsors: Array.isArray(data.sponsors) ? data.sponsors : prev.sponsors,
+    adminSettings: { ...prev.adminSettings, ...(data.adminSettings || {}) },
+    loadingScreen: { ...prev.loadingScreen, ...(data.loadingScreen || {}) },
+    teams: Array.isArray(data.teams) ? data.teams : prev.teams,
+    yourTeam: Array.isArray(data.yourTeam) ? data.yourTeam : (Array.isArray(prev.yourTeam) ? prev.yourTeam : initialFallbackContent.yourTeam),
+    yourTeamCategories: Array.isArray(data.yourTeamCategories) ? data.yourTeamCategories : (Array.isArray(prev.yourTeamCategories) ? prev.yourTeamCategories : initialFallbackContent.yourTeamCategories),
+    yourTeamLocked,
+    yourTeamLockedMessage,
+    partnersLocked,
+    partnersLockedMessage,
+    sponsorsLocked,
+    sponsorsLockedMessage,
+    faq: Array.isArray(data.faq) ? data.faq : prev.faq,
+    howItWorks: Array.isArray(data.howItWorks) ? data.howItWorks : prev.howItWorks,
+    gallery: Array.isArray(data.gallery) ? data.gallery : prev.gallery,
+    contact: { ...prev.contact, ...(data.contact || {}) },
+    finalCta: { ...prev.finalCta, ...(data.finalCta || {}) },
+  };
+}
+
+export interface ContentContextType {
   content: SiteContent;
   refreshContent: () => Promise<void>;
+  updateContent: (newContentOrUpdater: Partial<SiteContent> | ((prev: SiteContent) => SiteContent)) => void;
   loading: boolean;
 }
 
 const ContentContext = createContext<ContentContextType>({
   content: initialFallbackContent,
   refreshContent: async () => {},
+  updateContent: () => {},
   loading: false,
 });
 
 export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [content, setContent] = useState<SiteContent>(initialFallbackContent);
+  const [content, setContent] = useState<SiteContent>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(CONTENT_CACHE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && typeof parsed === 'object') {
+            return mergeSiteContent(initialFallbackContent, parsed);
+          }
+        }
+      } catch {}
+    }
+    return initialFallbackContent;
+  });
   const [loading, setLoading] = useState(true);
+
+  // Synchronous, immediate update function for optimistic & local updates with 0ms delay
+  const updateContent = useCallback((newContentOrUpdater: Partial<SiteContent> | ((prev: SiteContent) => SiteContent)) => {
+    setContent((prev) => {
+      const patch = typeof newContentOrUpdater === 'function' ? newContentOrUpdater(prev) : newContentOrUpdater;
+      const next = mergeSiteContent(prev, patch);
+      try {
+        localStorage.setItem(CONTENT_CACHE_KEY, JSON.stringify(next));
+      } catch {}
+
+      // Cross-tab broadcast (instant across open browser tabs)
+      try {
+        if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+          const bc = new BroadcastChannel('santhera_content_channel');
+          bc.postMessage(patch);
+          bc.close();
+        }
+      } catch {}
+
+      return next;
+    });
+  }, []);
 
   const refreshContent = useCallback(async () => {
     // 1. Try fetching from Supabase Cloud Database first
@@ -500,44 +626,13 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       if (!sbErr && sbRow?.content && typeof sbRow.content === 'object') {
         const data = sbRow.content as Record<string, any>;
-        setContent((prev) => ({
-          ...prev,
-          ...data,
-          eventInfo: { ...prev.eventInfo, ...(data.eventInfo || {}) },
-          eventControl: { ...prev.eventControl, ...(data.eventControl || {}) },
-          hero: { ...prev.hero, ...(data.hero || {}) },
-          navbar: { ...prev.navbar, ...(data.navbar || {}) },
-          mission: { ...prev.mission, ...(data.mission || {}) },
-          stats: { ...prev.stats, ...(data.stats || {}) },
-          prizes: { ...prev.prizes, ...(data.prizes || {}) },
-          footer: { ...prev.footer, ...(data.footer || {}) },
-          registrationForm: { ...prev.registrationForm, ...(data.registrationForm || {}) },
-          battlegrounds: { ...prev.battlegrounds, ...(data.battlegrounds || {}) },
-          challenges: Array.isArray(data.challenges) ? data.challenges : prev.challenges,
-          timeline: Array.isArray(data.timeline) ? data.timeline : prev.timeline,
-          partners: Array.isArray(data.partners) ? data.partners : (Array.isArray(data.sponsors) ? data.sponsors : prev.partners),
-          sponsors: Array.isArray(data.partners) ? data.partners : (Array.isArray(data.sponsors) ? data.sponsors : prev.sponsors),
-          adminSettings: { ...prev.adminSettings, ...(data.adminSettings || {}) },
-          loadingScreen: { ...prev.loadingScreen, ...(data.loadingScreen || {}) },
-          teams: Array.isArray(data.teams) ? data.teams : prev.teams,
-          yourTeam: Array.isArray(data.yourTeam) ? data.yourTeam : (Array.isArray(prev.yourTeam) ? prev.yourTeam : initialFallbackContent.yourTeam),
-          yourTeamCategories: Array.isArray(data.yourTeamCategories) ? data.yourTeamCategories : (Array.isArray(prev.yourTeamCategories) ? prev.yourTeamCategories : initialFallbackContent.yourTeamCategories),
-          yourTeamLocked: typeof data.yourTeamLocked === 'boolean'
-            ? data.yourTeamLocked
-            : (typeof data.eventControl?.yourTeamLocked === 'boolean'
-              ? data.eventControl.yourTeamLocked
-              : (prev.yourTeamLocked ?? false)),
-          yourTeamLockedMessage: typeof data.yourTeamLockedMessage === 'string'
-            ? data.yourTeamLockedMessage
-            : (typeof data.eventControl?.yourTeamLockedMessage === 'string'
-              ? data.eventControl.yourTeamLockedMessage
-              : (prev.yourTeamLockedMessage ?? "TEAM ROSTER IS CLASSIFIED. CHECK BACK CLOSER TO THE EVENT DATE.")),
-          faq: Array.isArray(data.faq) ? data.faq : prev.faq,
-          howItWorks: Array.isArray(data.howItWorks) ? data.howItWorks : prev.howItWorks,
-          gallery: Array.isArray(data.gallery) ? data.gallery : prev.gallery,
-          contact: { ...prev.contact, ...(data.contact || {}) },
-          finalCta: { ...prev.finalCta, ...(data.finalCta || {}) },
-        }));
+        setContent((prev) => {
+          const next = mergeSiteContent(prev, data);
+          try {
+            localStorage.setItem(CONTENT_CACHE_KEY, JSON.stringify(next));
+          } catch {}
+          return next;
+        });
         setLoading(false);
         return;
       }
@@ -551,44 +646,13 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (res.ok) {
         const data = await res.json();
         if (data && typeof data === 'object') {
-          setContent((prev) => ({
-            ...prev,
-            ...data,
-            eventInfo: { ...prev.eventInfo, ...(data.eventInfo || {}) },
-            eventControl: { ...prev.eventControl, ...(data.eventControl || {}) },
-            hero: { ...prev.hero, ...(data.hero || {}) },
-            navbar: { ...prev.navbar, ...(data.navbar || {}) },
-            mission: { ...prev.mission, ...(data.mission || {}) },
-            stats: { ...prev.stats, ...(data.stats || {}) },
-            prizes: { ...prev.prizes, ...(data.prizes || {}) },
-            footer: { ...prev.footer, ...(data.footer || {}) },
-            registrationForm: { ...prev.registrationForm, ...(data.registrationForm || {}) },
-            battlegrounds: { ...prev.battlegrounds, ...(data.battlegrounds || {}) },
-            challenges: Array.isArray(data.challenges) ? data.challenges : prev.challenges,
-            timeline: Array.isArray(data.timeline) ? data.timeline : prev.timeline,
-            partners: Array.isArray(data.partners) ? data.partners : (Array.isArray(data.sponsors) ? data.sponsors : prev.partners),
-            sponsors: Array.isArray(data.partners) ? data.partners : (Array.isArray(data.sponsors) ? data.sponsors : prev.sponsors),
-            adminSettings: { ...prev.adminSettings, ...(data.adminSettings || {}) },
-            loadingScreen: { ...prev.loadingScreen, ...(data.loadingScreen || {}) },
-            teams: Array.isArray(data.teams) ? data.teams : prev.teams,
-            yourTeam: Array.isArray(data.yourTeam) ? data.yourTeam : (Array.isArray(prev.yourTeam) ? prev.yourTeam : initialFallbackContent.yourTeam),
-          yourTeamCategories: Array.isArray(data.yourTeamCategories) ? data.yourTeamCategories : (Array.isArray(prev.yourTeamCategories) ? prev.yourTeamCategories : initialFallbackContent.yourTeamCategories),
-          yourTeamLocked: typeof data.yourTeamLocked === 'boolean'
-            ? data.yourTeamLocked
-            : (typeof data.eventControl?.yourTeamLocked === 'boolean'
-              ? data.eventControl.yourTeamLocked
-              : (prev.yourTeamLocked ?? false)),
-          yourTeamLockedMessage: typeof data.yourTeamLockedMessage === 'string'
-            ? data.yourTeamLockedMessage
-            : (typeof data.eventControl?.yourTeamLockedMessage === 'string'
-              ? data.eventControl.yourTeamLockedMessage
-              : (prev.yourTeamLockedMessage ?? "TEAM ROSTER IS CLASSIFIED. CHECK BACK CLOSER TO THE EVENT DATE.")),
-            faq: Array.isArray(data.faq) ? data.faq : prev.faq,
-            howItWorks: Array.isArray(data.howItWorks) ? data.howItWorks : prev.howItWorks,
-            gallery: Array.isArray(data.gallery) ? data.gallery : prev.gallery,
-            contact: { ...prev.contact, ...(data.contact || {}) },
-            finalCta: { ...prev.finalCta, ...(data.finalCta || {}) },
-          }));
+          setContent((prev) => {
+            const next = mergeSiteContent(prev, data);
+            try {
+              localStorage.setItem(CONTENT_CACHE_KEY, JSON.stringify(next));
+            } catch {}
+            return next;
+          });
         }
       }
     } catch (err) {
@@ -601,10 +665,48 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     refreshContent();
 
-    // Supabase Realtime Channel: Listen for immediate database updates across all clients
-    let channel: any = null;
+    // 1. Native HTML5 BroadcastChannel for instantaneous multi-tab sync on same device
+    let bc: BroadcastChannel | null = null;
     try {
-      channel = supabase
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        bc = new BroadcastChannel('santhera_content_channel');
+        bc.onmessage = (event) => {
+          if (event.data && typeof event.data === 'object') {
+            setContent((prev) => {
+              const next = mergeSiteContent(prev, event.data);
+              try {
+                localStorage.setItem(CONTENT_CACHE_KEY, JSON.stringify(next));
+              } catch {}
+              return next;
+            });
+          }
+        };
+      }
+    } catch {}
+
+    // 2. Supabase Realtime Broadcast channel (works without postgres replication setup)
+    let broadcastChan: any = null;
+    try {
+      broadcastChan = supabase
+        .channel('public:site_content_broadcast')
+        .on('broadcast', { event: 'content_updated' }, (payload) => {
+          if (payload?.payload && typeof payload.payload === 'object') {
+            setContent((prev) => {
+              const next = mergeSiteContent(prev, payload.payload);
+              try {
+                localStorage.setItem(CONTENT_CACHE_KEY, JSON.stringify(next));
+              } catch {}
+              return next;
+            });
+          }
+        })
+        .subscribe();
+    } catch {}
+
+    // 3. Supabase Postgres database changes (when replication is active)
+    let dbChannel: any = null;
+    try {
+      dbChannel = supabase
         .channel('public:site_content_live')
         .on(
           'postgres_changes',
@@ -612,44 +714,13 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
           (payload) => {
             if (payload?.new && (payload.new as any)?.content) {
               const data = (payload.new as any).content;
-              setContent((prev) => ({
-                ...prev,
-                ...data,
-                eventInfo: { ...prev.eventInfo, ...(data.eventInfo || {}) },
-                eventControl: { ...prev.eventControl, ...(data.eventControl || {}) },
-                hero: { ...prev.hero, ...(data.hero || {}) },
-                navbar: { ...prev.navbar, ...(data.navbar || {}) },
-                mission: { ...prev.mission, ...(data.mission || {}) },
-                stats: { ...prev.stats, ...(data.stats || {}) },
-                prizes: { ...prev.prizes, ...(data.prizes || {}) },
-                footer: { ...prev.footer, ...(data.footer || {}) },
-                registrationForm: { ...prev.registrationForm, ...(data.registrationForm || {}) },
-                battlegrounds: { ...prev.battlegrounds, ...(data.battlegrounds || {}) },
-                challenges: Array.isArray(data.challenges) ? data.challenges : prev.challenges,
-                timeline: Array.isArray(data.timeline) ? data.timeline : prev.timeline,
-                partners: Array.isArray(data.partners) ? data.partners : (Array.isArray(data.sponsors) ? data.sponsors : prev.partners),
-                sponsors: Array.isArray(data.partners) ? data.partners : (Array.isArray(data.sponsors) ? data.sponsors : prev.sponsors),
-                adminSettings: { ...prev.adminSettings, ...(data.adminSettings || {}) },
-                loadingScreen: { ...prev.loadingScreen, ...(data.loadingScreen || {}) },
-                teams: Array.isArray(data.teams) ? data.teams : prev.teams,
-                yourTeam: Array.isArray(data.yourTeam) ? data.yourTeam : (Array.isArray(prev.yourTeam) ? prev.yourTeam : initialFallbackContent.yourTeam),
-          yourTeamCategories: Array.isArray(data.yourTeamCategories) ? data.yourTeamCategories : (Array.isArray(prev.yourTeamCategories) ? prev.yourTeamCategories : initialFallbackContent.yourTeamCategories),
-          yourTeamLocked: typeof data.yourTeamLocked === 'boolean'
-            ? data.yourTeamLocked
-            : (typeof data.eventControl?.yourTeamLocked === 'boolean'
-              ? data.eventControl.yourTeamLocked
-              : (prev.yourTeamLocked ?? false)),
-          yourTeamLockedMessage: typeof data.yourTeamLockedMessage === 'string'
-            ? data.yourTeamLockedMessage
-            : (typeof data.eventControl?.yourTeamLockedMessage === 'string'
-              ? data.eventControl.yourTeamLockedMessage
-              : (prev.yourTeamLockedMessage ?? "TEAM ROSTER IS CLASSIFIED. CHECK BACK CLOSER TO THE EVENT DATE.")),
-                faq: Array.isArray(data.faq) ? data.faq : prev.faq,
-                howItWorks: Array.isArray(data.howItWorks) ? data.howItWorks : prev.howItWorks,
-                gallery: Array.isArray(data.gallery) ? data.gallery : prev.gallery,
-                contact: { ...prev.contact, ...(data.contact || {}) },
-                finalCta: { ...prev.finalCta, ...(data.finalCta || {}) },
-              }));
+              setContent((prev) => {
+                const next = mergeSiteContent(prev, data);
+                try {
+                  localStorage.setItem(CONTENT_CACHE_KEY, JSON.stringify(next));
+                } catch {}
+                return next;
+              });
             } else {
               refreshContent();
             }
@@ -661,14 +732,20 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     return () => {
-      if (channel) {
-        supabase.removeChannel(channel);
+      if (bc) {
+        bc.close();
+      }
+      if (broadcastChan) {
+        supabase.removeChannel(broadcastChan);
+      }
+      if (dbChannel) {
+        supabase.removeChannel(dbChannel);
       }
     };
   }, [refreshContent]);
 
   return (
-    <ContentContext.Provider value={{ content, refreshContent, loading }}>
+    <ContentContext.Provider value={{ content, refreshContent, updateContent, loading }}>
       {children}
     </ContentContext.Provider>
   );

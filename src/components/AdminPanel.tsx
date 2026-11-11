@@ -7,7 +7,7 @@ import {
   Database, Globe, Star, FileText, CheckCircle2, Code2, AlertCircle,
   Search, Download, ExternalLink, Activity, ClipboardList, Key, Zap,
   Clock, Layers, Sparkles, Navigation, CheckSquare, Upload, Image, Swords, Eye, Terminal, Handshake, Camera, Trophy,
-  Phone, PhoneCall, MessageSquare, Mail, Gift
+  Phone, PhoneCall, MessageSquare, Mail, Gift, Crown
 } from "lucide-react";
 import { useSiteContent, initialFallbackContent } from "../context/ContentContext";
 import { supabase, uploadMediaToSupabase } from "../lib/supabase";
@@ -38,6 +38,7 @@ type Section =
   | "teams" 
   | "yourTeam"
   | "faq" 
+  | "sponsors"
   | "partners"
   | "howItWorks"
   | "gallery"
@@ -144,7 +145,7 @@ function formatExternalUrl(url?: string, platform?: string): string {
 }
 
 export default function AdminPanel({ onClose }: AdminPanelProps) {
-  const { refreshContent } = useSiteContent();
+  const { updateContent, refreshContent } = useSiteContent();
   const [token, setToken] = useState<string | null>(getStoredAdminToken);
   const [rememberMe, setRememberMe] = useState(true);
   const [email, setEmail] = useState("");
@@ -297,8 +298,8 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
       ...initialFallbackContent,
       ...data,
       howItWorks: Array.isArray(data.howItWorks) ? data.howItWorks : [],
-      partners: Array.isArray(data.partners) ? data.partners : (Array.isArray(data.sponsors) ? data.sponsors : []),
-      sponsors: Array.isArray(data.partners) ? data.partners : (Array.isArray(data.sponsors) ? data.sponsors : []),
+      partners: Array.isArray(data.partners) ? data.partners : [],
+      sponsors: Array.isArray(data.sponsors) ? data.sponsors : [],
       challenges: Array.isArray(data.challenges) ? data.challenges : [],
       timeline: Array.isArray(data.timeline) ? data.timeline : [],
       teams: Array.isArray(data.teams) ? data.teams : [],
@@ -504,18 +505,37 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
         } : {})
       };
 
-      // 1. Direct Supabase Cloud Save (Guaranteed persistence after deploy)
+      // 1. Immediately update AdminPanel's in-memory editData and content so subsequent edits don't use stale data
+      setEditData(updatedFull);
+      setContent(updatedFull);
+
+      // 2. Immediately update Global Site Content so the public site updates in 0ms without page reload
+      updateContent(updatedFull);
+
+      // 3. Direct Supabase Cloud Save (Guaranteed persistence after deploy)
       try {
-        await supabase
+        const { error: sbErr } = await supabase
           .from('site_content')
           .upsert({ id: 'hackverse_2026', content: updatedFull, updated_at: new Date().toISOString() });
+        if (sbErr) {
+          console.error("Supabase section save error:", sbErr.message);
+        }
       } catch (sbErr) {
         console.warn("Supabase section save notice:", sbErr);
       }
 
-      // 2. Direct Relational Table Sync (So tables view in Supabase dashboard also updates)
+      // 4. Broadcast live update to other open clients
       try {
-        if (sectionKey === 'partners' || sectionKey === 'sponsors') {
+        await supabase.channel('public:site_content_broadcast').send({
+          type: 'broadcast',
+          event: 'content_updated',
+          payload: updatedFull,
+        });
+      } catch {}
+
+      // 5. Direct Relational Table Sync (So tables view in Supabase dashboard also updates)
+      try {
+        if (sectionKey === 'partners') {
           const list = Array.isArray(data) ? data : [];
           for (const p of list) {
             await supabase.from('partners').upsert({
@@ -526,6 +546,19 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
               perk: p.perk || '',
               logo_url: p.logoUrl || p.logo_url || '',
               website_url: p.websiteUrl || p.website_url || ''
+            });
+          }
+        } else if (sectionKey === 'sponsors') {
+          const list = Array.isArray(data) ? data : [];
+          for (const s of list) {
+            await supabase.from('sponsors').upsert({
+              id: s.id || `sp-${Date.now()}`,
+              name: s.name || 'Sponsor',
+              tier: s.tier || 'Gold',
+              category: s.category || '',
+              perk: s.perk || '',
+              logo_url: s.logoUrl || s.logo_url || '',
+              website_url: s.websiteUrl || s.website_url || ''
             });
           }
         } else if (sectionKey === 'gallery') {
@@ -593,7 +626,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
         console.warn("Supabase relational sync notice:", relErr);
       }
 
-      // 3. Sync with local server API if running
+      // 6. Sync with local server API if running
       try {
         await fetch(`${API_BASE}/admin/content/${sectionKey}`, {
           method: "PUT",
@@ -606,8 +639,6 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
       } catch {}
 
       setSaveStatus("saved");
-      await fetchContent();
-      await refreshContent();
       setTimeout(() => setSaveStatus("idle"), 2500);
     } catch {
       setSaveStatus("error");
@@ -671,6 +702,11 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
       const parsed = JSON.parse(rawJsonText);
       setSaveStatus("saving");
 
+      // Instantly update local and global state
+      setContent(parsed);
+      setEditData(parsed);
+      updateContent(parsed);
+
       // Sync with Supabase Cloud
       try {
         await supabase
@@ -695,8 +731,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
       }
 
       setSaveStatus("saved");
-      await fetchContent();
-      await refreshContent();
+      setTimeout(() => setSaveStatus("idle"), 2500);
       setTimeout(() => setSaveStatus("idle"), 2500);
     } catch (err: any) {
       setRawJsonError(`Invalid JSON syntax: ${err.message}`);
@@ -1006,6 +1041,14 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
 
   const galleryItemsCount = Array.isArray(editData.gallery) ? editData.gallery.length : 0;
   const yourTeamCount = Array.isArray(editData.yourTeam) ? editData.yourTeam.length : 0;
+  const sponsorsCount = Array.isArray(editData.sponsors) ? editData.sponsors.length : 0;
+  const partnersCount = Array.isArray(editData.partners) ? editData.partners.length : 0;
+  const isSponsorsLockedAdmin = Boolean(
+    editData.sponsorsLocked ?? editData.eventControl?.sponsorsLocked
+  );
+  const isPartnersLockedAdmin = Boolean(
+    editData.partnersLocked ?? editData.eventControl?.partnersLocked
+  );
 
   const sidebarGroups: NavGroup[] = [
     {
@@ -1027,9 +1070,10 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
         { key: "howItWorks", label: "Warrior Pathway", icon: <Layers className="w-4 h-4 text-[#FFAA00]" /> },
         { key: "timeline", label: "Event Chronology", icon: <Clock className="w-4 h-4 text-cyan-400" /> },
         { key: "prizes", label: "Prize & Bounties", icon: <Award className="w-4 h-4 text-[#D4AF37]" /> },
+        { key: "sponsors", label: `Official Sponsors (${sponsorsCount}) ${isSponsorsLockedAdmin ? '🔒' : ''}`, icon: <Crown className="w-4 h-4 text-[#FFAA00]" /> },
+        { key: "partners", label: `Official Partners (${partnersCount}) ${isPartnersLockedAdmin ? '🔒' : ''}`, icon: <Handshake className="w-4 h-4 text-[#55FF55]" /> },
         { key: "teams", label: "Featured Squads", icon: <Users className="w-4 h-4 text-neutral-300" /> },
         { key: "yourTeam", label: `Your Team / Crew (${yourTeamCount})`, icon: <Users className="w-4 h-4 text-[#FFAA00]" /> },
-        { key: "partners", label: "Official Partners", icon: <Handshake className="w-4 h-4 text-[#55FF55]" /> },
         { key: "gallery", label: `Gallery Archives (${galleryItemsCount})`, icon: <Camera className="w-4 h-4 text-[#F5D061]" /> },
         { key: "faq", label: "Rules & FAQ Base", icon: <HelpCircle className="w-4 h-4 text-neutral-300" /> },
       ],
@@ -1056,7 +1100,9 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
     battlegroundsLocked: false,
     battlegroundsLockedMessage: "BATTLEGROUNDS INTEL IS CLASSIFIED. CHECK BACK CLOSER TO THE EVENT DATE.",
     sponsorsLocked: false,
-    sponsorsLockedMessage: "SPONSOR ALLIANCES ARE CURRENTLY CLASSIFIED. OFFICIAL PARTNERS WILL BE UNVEILED CLOSER TO LAUNCH.",
+    sponsorsLockedMessage: "SPONSOR ALLIANCES ARE CURRENTLY CLASSIFIED. OFFICIAL SPONSORS WILL BE UNVEILED CLOSER TO LAUNCH.",
+    partnersLocked: false,
+    partnersLockedMessage: "PARTNER ALLIANCES ARE CURRENTLY CLASSIFIED. OFFICIAL PARTNERS WILL BE UNVEILED CLOSER TO LAUNCH.",
     yourTeamLocked: false,
     yourTeamLockedMessage: "TEAM ROSTER IS CLASSIFIED. CHECK BACK CLOSER TO THE EVENT DATE."
   };
@@ -1170,6 +1216,8 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
       eventControl: updatedControl
     };
     setEditData(updatedEdit);
+    setContent(updatedEdit);
+    updateContent(updatedEdit);
 
     try {
       await supabase
@@ -1205,10 +1253,8 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
     setSaveStatus("idle");
   };
   const faq: any[] = Array.isArray(editData.faq) ? editData.faq : [];
-  const partners: any[] = Array.isArray(editData.partners)
-    ? editData.partners
-    : (Array.isArray(editData.sponsors) ? editData.sponsors : []);
-  const sponsors: any[] = partners;
+  const partners: any[] = Array.isArray(editData.partners) ? editData.partners : [];
+  const sponsors: any[] = Array.isArray(editData.sponsors) ? editData.sponsors : [];
   const gallery: any[] = Array.isArray(editData.gallery) ? editData.gallery : [];
   const howItWorksSteps: any[] = Array.isArray(editData.howItWorks) ? editData.howItWorks : [];
   const finalCta = editData.finalCta || {};
@@ -1751,35 +1797,40 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
               </div>
 
               {/* ── Sponsors Lock/Unlock ── */}
-              <div className="p-6 border border-[#FF4655]/30 bg-[#0c1017] sf-clip-angled-sm space-y-5">
-                <div className="flex items-center gap-2 border-b border-[#FF4655]/20 pb-3">
-                  <Shield className="w-4 h-4 text-[#FF4655]" />
-                  <h4 className="font-cinzel font-bold text-sm text-[#FF4655] uppercase tracking-wider">
-                    Sponsors & Allies Access Control
+              <div className="p-6 border border-[#FFAA00]/30 bg-[#0c1017] sf-clip-angled-sm space-y-5">
+                <div className="flex items-center gap-2 border-b border-[#FFAA00]/20 pb-3">
+                  <Crown className="w-4 h-4 text-[#FFAA00]" />
+                  <h4 className="font-cinzel font-bold text-sm text-[#FFAA00] uppercase tracking-wider">
+                    Official Sponsors Access Control
                   </h4>
                 </div>
                 <p className="font-rajdhani text-xs text-neutral-400">
-                  When <strong className="text-white">LOCKED</strong>, the Sponsors section on the site displays a restricted classified card saying partnerships are under seal.
+                  When <strong className="text-white">LOCKED</strong>, the Sponsors scrolling marquee section on the site displays a restricted classified card saying sponsor alliances are under seal.
                 </p>
 
                 {/* Toggle */}
                 <div className={`flex items-center justify-between p-4 border sf-clip-angled-sm ${eventControlData.sponsorsLocked ? 'border-[#FF4655]/50 bg-[#FF4655]/8' : 'border-[#55FF55]/50 bg-[#55FF55]/8'}`}>
                   <div>
                     <p className="font-rajdhani text-sm font-bold text-white uppercase tracking-wider">
-                      Sponsors Roster Access
+                      Sponsors Marquee Access
                     </p>
                     <p className="font-rajdhani text-xs text-neutral-500 mt-0.5">
-                      {eventControlData.sponsorsLocked ? 'Visitors see a locked / classified roster message' : 'Visitors can browse all sponsor logos and links freely'}
+                      {eventControlData.sponsorsLocked ? 'Visitors see a locked / classified sponsor message' : 'Visitors can view all scrolling sponsor logos and links freely'}
                     </p>
                   </div>
                   <button
                     type="button"
-                    onClick={() =>
+                    onClick={() => {
+                      const nextLocked = !Boolean(eventControlData.sponsorsLocked);
                       setEditData({
                         ...editData,
-                        eventControl: { ...eventControlData, sponsorsLocked: !eventControlData.sponsorsLocked }
-                      })
-                    }
+                        sponsorsLocked: nextLocked,
+                        eventControl: {
+                          ...eventControlData,
+                          sponsorsLocked: nextLocked,
+                        }
+                      });
+                    }}
                     className={`shrink-0 px-5 py-2.5 font-cinzel text-xs font-black uppercase tracking-wider border sf-clip-angled-sm flex items-center gap-2 transition-all cursor-pointer ${
                       eventControlData.sponsorsLocked
                         ? "bg-[#FF4655]/15 border-[#FF4655] text-[#FF4655]"
@@ -1811,21 +1862,125 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                     onChange={(e) =>
                       setEditData({
                         ...editData,
-                        eventControl: { ...eventControlData, sponsorsLockedMessage: e.target.value }
+                        sponsorsLockedMessage: e.target.value,
+                        eventControl: {
+                          ...eventControlData,
+                          sponsorsLockedMessage: e.target.value,
+                        }
                       })
                     }
                     className="w-full bg-[#141a24] border border-[#D4AF37]/40 text-white px-4 py-3 text-sm font-rajdhani outline-none focus:border-[#D4AF37] transition-colors resize-none"
-                    placeholder="Message shown when sponsors roster is locked..."
+                    placeholder="Message shown when sponsors marquee is locked..."
                   />
                   <p className="font-rajdhani text-[11px] text-neutral-500">This message is displayed to visitors when the sponsor alliances are locked.</p>
                 </div>
 
                 <button
-                  onClick={() => handleSaveSection("eventControl", eventControlData)}
+                  onClick={() =>
+                    handleSaveSection("eventControl", {
+                      ...eventControlData,
+                      sponsorsLocked: Boolean(eventControlData.sponsorsLocked),
+                      sponsorsLockedMessage: eventControlData.sponsorsLockedMessage || "",
+                    })
+                  }
                   className="px-6 py-2.5 sf-btn-gold sf-clip-angled font-cinzel text-xs font-bold tracking-widest flex items-center gap-2 cursor-pointer"
                 >
                   <Save className="w-3.5 h-3.5" />
                   SAVE SPONSORS CONTROL
+                </button>
+              </div>
+
+              {/* ── Partners Lock/Unlock ── */}
+              <div className="p-6 border border-[#55FF55]/30 bg-[#0c1017] sf-clip-angled-sm space-y-5">
+                <div className="flex items-center gap-2 border-b border-[#55FF55]/20 pb-3">
+                  <Handshake className="w-4 h-4 text-[#55FF55]" />
+                  <h4 className="font-cinzel font-bold text-sm text-[#55FF55] uppercase tracking-wider">
+                    Official Partners Access Control
+                  </h4>
+                </div>
+                <p className="font-rajdhani text-xs text-neutral-400">
+                  When <strong className="text-white">LOCKED</strong>, the Partners section on the site displays a restricted classified card saying partner alliances are under seal.
+                </p>
+
+                {/* Toggle */}
+                <div className={`flex items-center justify-between p-4 border sf-clip-angled-sm ${eventControlData.partnersLocked ? 'border-[#FF4655]/50 bg-[#FF4655]/8' : 'border-[#55FF55]/50 bg-[#55FF55]/8'}`}>
+                  <div>
+                    <p className="font-rajdhani text-sm font-bold text-white uppercase tracking-wider">
+                      Partners Grid Access
+                    </p>
+                    <p className="font-rajdhani text-xs text-neutral-500 mt-0.5">
+                      {eventControlData.partnersLocked ? 'Visitors see a locked / classified partner message' : 'Visitors can browse all partner logos and links freely'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextLocked = !Boolean(eventControlData.partnersLocked);
+                      setEditData({
+                        ...editData,
+                        partnersLocked: nextLocked,
+                        eventControl: {
+                          ...eventControlData,
+                          partnersLocked: nextLocked,
+                        }
+                      });
+                    }}
+                    className={`shrink-0 px-5 py-2.5 font-cinzel text-xs font-black uppercase tracking-wider border sf-clip-angled-sm flex items-center gap-2 transition-all cursor-pointer ${
+                      eventControlData.partnersLocked
+                        ? "bg-[#FF4655]/15 border-[#FF4655] text-[#FF4655]"
+                        : "bg-[#55FF55]/15 border-[#55FF55] text-[#55FF55]"
+                    }`}
+                  >
+                    {eventControlData.partnersLocked ? (
+                      <>
+                        <Lock className="w-4 h-4" />
+                        <span>LOCKED</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckSquare className="w-4 h-4" />
+                        <span>OPEN</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Lock message */}
+                <div className="space-y-2">
+                  <label className="block font-rajdhani text-xs font-bold text-[#F5D061] uppercase tracking-wider">
+                    Partners Locked Message
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={eventControlData.partnersLockedMessage || ""}
+                    onChange={(e) =>
+                      setEditData({
+                        ...editData,
+                        partnersLockedMessage: e.target.value,
+                        eventControl: {
+                          ...eventControlData,
+                          partnersLockedMessage: e.target.value,
+                        }
+                      })
+                    }
+                    className="w-full bg-[#141a24] border border-[#D4AF37]/40 text-white px-4 py-3 text-sm font-rajdhani outline-none focus:border-[#D4AF37] transition-colors resize-none"
+                    placeholder="Message shown when partners grid is locked..."
+                  />
+                  <p className="font-rajdhani text-[11px] text-neutral-500">This message is displayed to visitors when the partner alliances are locked.</p>
+                </div>
+
+                <button
+                  onClick={() =>
+                    handleSaveSection("eventControl", {
+                      ...eventControlData,
+                      partnersLocked: Boolean(eventControlData.partnersLocked),
+                      partnersLockedMessage: eventControlData.partnersLockedMessage || "",
+                    })
+                  }
+                  className="px-6 py-2.5 sf-btn-gold sf-clip-angled font-cinzel text-xs font-bold tracking-widest flex items-center gap-2 cursor-pointer"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  SAVE PARTNERS CONTROL
                 </button>
               </div>
 
@@ -4450,6 +4605,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
 
                 setContent(updatedAll);
                 setEditData(updatedAll);
+                updateContent(updatedAll);
                 setSaveStatus("saved");
                 setBattlePrizeMsg({
                   type: "success",
@@ -4524,6 +4680,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
 
                 setContent(updatedAll);
                 setEditData(updatedAll);
+                updateContent(updatedAll);
                 setSaveStatus("saved");
                 setBannerMsg({
                   type: "success",
@@ -6813,257 +6970,790 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
             </div>
           )}
 
-          {/* 14. OFFICIAL PARTNERS */}
-          {activeSection === "partners" && (
-            <div className="space-y-4 max-w-5xl">
-              {/* Partners Quick Lock / Unlock Status Bar */}
-              <div className={`p-4 border sf-clip-angled-sm flex flex-col gap-3 ${
-                (eventControlData.partnersLocked ?? eventControlData.sponsorsLocked)
-                  ? 'border-[#FF4655]/50 bg-[#FF4655]/10'
-                  : 'border-[#55FF55]/50 bg-[#55FF55]/10'
-              }`}>
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
-                      (eventControlData.partnersLocked ?? eventControlData.sponsorsLocked) ? 'bg-[#FF4655]/20 text-[#FF4655]' : 'bg-[#55FF55]/20 text-[#55FF55]'
-                    }`}>
-                      {(eventControlData.partnersLocked ?? eventControlData.sponsorsLocked) ? <Lock className="w-5 h-5" /> : <CheckSquare className="w-5 h-5" />}
+          {/* 14. OFFICIAL SPONSORS (SCROLLING LOGOS) */}
+          {activeSection === "sponsors" && (
+            <div className="space-y-5 max-w-5xl">
+              {/* Sponsors Quick Lock / Unlock Status Bar */}
+              <div
+                className={`p-5 border sf-clip-angled-sm flex flex-col gap-4 shadow-lg ${
+                  Boolean(eventControlData.sponsorsLocked)
+                    ? 'border-[#FF4655]/60 bg-[#FF4655]/10 shadow-[0_0_25px_rgba(255,70,85,0.15)]'
+                    : 'border-[#55FF55]/60 bg-[#55FF55]/10 shadow-[0_0_25px_rgba(85,255,85,0.1)]'
+                }`}
+              >
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5">
+                    <div
+                      className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 border ${
+                        Boolean(eventControlData.sponsorsLocked)
+                          ? 'bg-[#FF4655]/20 text-[#FF4655] border-[#FF4655]/50'
+                          : 'bg-[#55FF55]/20 text-[#55FF55] border-[#55FF55]/50'
+                      }`}
+                    >
+                      {Boolean(eventControlData.sponsorsLocked) ? (
+                        <Lock className="w-5 h-5" />
+                      ) : (
+                        <CheckSquare className="w-5 h-5" />
+                      )}
                     </div>
                     <div>
-                      <span className="font-cinzel font-bold text-xs text-white uppercase tracking-wider">
-                        Partners Section Status: {(eventControlData.partnersLocked ?? eventControlData.sponsorsLocked) ? "RESTRICTED / LOCKED" : "UNLOCKED / PUBLIC"}
-                      </span>
-                      <p className="font-rajdhani text-[11px] text-neutral-400 mt-0.5">
-                        {(eventControlData.partnersLocked ?? eventControlData.sponsorsLocked)
-                          ? "Visitors see the classified restricted screen when viewing the Partners section."
-                          : "Visitors can browse all partner logos and tiers freely."}
+                      <div className="flex items-center gap-2">
+                        <span className="font-cinzel font-black text-sm text-white uppercase tracking-wider">
+                          Sponsors Marquee Status:{' '}
+                          <span
+                            className={
+                              Boolean(eventControlData.sponsorsLocked)
+                                ? 'text-[#FF4655]'
+                                : 'text-[#55FF55]'
+                            }
+                          >
+                            {Boolean(eventControlData.sponsorsLocked)
+                              ? 'RESTRICTED / LOCKED 🔒'
+                              : 'UNLOCKED / PUBLIC 🔓'}
+                          </span>
+                        </span>
+                      </div>
+                      <p className="font-rajdhani text-xs text-neutral-300 mt-0.5">
+                        {Boolean(eventControlData.sponsorsLocked)
+                          ? 'Visitors opening the site see the classified restricted banner in place of the sponsor marquee.'
+                          : 'Visitors can view the continuous marquee of official sponsor logos, tiers, and portals.'}
                       </p>
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const newLocked = !(eventControlData.partnersLocked ?? eventControlData.sponsorsLocked);
-                      const updatedControl = {
-                        ...eventControlData,
-                        partnersLocked: newLocked,
-                        sponsorsLocked: newLocked
-                      };
-                      setEditData({ ...editData, eventControl: updatedControl });
-                      await handleSaveSection("eventControl", updatedControl);
-                    }}
-                    className={`px-4 py-2 font-cinzel text-xs font-black uppercase tracking-wider border sf-clip-angled-sm flex items-center gap-2 cursor-pointer transition-all ${
-                      (eventControlData.partnersLocked ?? eventControlData.sponsorsLocked)
-                        ? "bg-[#55FF55]/20 border-[#55FF55] text-[#55FF55] hover:bg-[#55FF55]/30"
-                        : "bg-[#FF4655]/20 border-[#FF4655] text-[#FF4655] hover:bg-[#FF4655]/30"
-                    }`}
-                  >
-                    {(eventControlData.partnersLocked ?? eventControlData.sponsorsLocked) ? (
-                      <>
-                        <CheckSquare className="w-3.5 h-3.5" />
-                        <span>UNLOCK PARTNERS</span>
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="w-3.5 h-3.5" />
-                        <span>LOCK PARTNERS</span>
-                      </>
-                    )}
-                  </button>
+                  <div className="flex items-center gap-2.5 self-end sm:self-center">
+                    <a
+                      href="#sponsors"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3.5 py-2 border border-neutral-700 bg-black/40 hover:bg-black/70 text-neutral-300 hover:text-white font-rajdhani text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 sf-clip-angled-sm transition-all"
+                      title="Jump to Sponsors section on the site"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Preview Section</span>
+                    </a>
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const newLocked = !Boolean(eventControlData.sponsorsLocked);
+                        const updatedControl = {
+                          ...eventControlData,
+                          sponsorsLocked: newLocked,
+                        };
+                        setEditData({
+                          ...editData,
+                          sponsorsLocked: newLocked,
+                          eventControl: updatedControl,
+                        });
+                        await handleSaveSection('eventControl', updatedControl);
+                        setSaveStatus('saved');
+                        setTimeout(() => setSaveStatus('idle'), 2500);
+                      }}
+                      className={`px-5 py-2.5 font-cinzel text-xs font-black uppercase tracking-wider border sf-clip-angled-sm flex items-center gap-2 cursor-pointer transition-all shadow-md ${
+                        Boolean(eventControlData.sponsorsLocked)
+                          ? 'bg-[#55FF55]/20 border-[#55FF55] text-[#55FF55] hover:bg-[#55FF55]/30'
+                          : 'bg-[#FF4655]/20 border-[#FF4655] text-[#FF4655] hover:bg-[#FF4655]/30'
+                      }`}
+                    >
+                      {Boolean(eventControlData.sponsorsLocked) ? (
+                        <>
+                          <CheckSquare className="w-4 h-4" />
+                          <span>UNLOCK SPONSORS MARQUEE</span>
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="w-4 h-4" />
+                          <span>LOCK SPONSORS MARQUEE</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
-                {(eventControlData.partnersLocked ?? eventControlData.sponsorsLocked) && (
-                  <div className="pt-2 border-t border-[#FF4655]/20">
-                    <label className="text-[10px] text-[#FF4655] font-bold uppercase block mb-1">
+                {/* Editable Locked Screen Message */}
+                {Boolean(eventControlData.sponsorsLocked) && (
+                  <div className="pt-3 border-t border-[#FF4655]/30 space-y-1.5">
+                    <label className="text-[11px] text-[#FF4655] font-bold uppercase block tracking-wider">
                       Classified Locked Message Shown to Visitors
                     </label>
-                    <input
-                      type="text"
-                      value={eventControlData.partnersLockedMessage || eventControlData.sponsorsLockedMessage || ""}
+                    <textarea
+                      rows={2}
+                      value={eventControlData.sponsorsLockedMessage || ''}
                       onChange={(e) => {
                         const updated = {
                           ...eventControlData,
-                          partnersLockedMessage: e.target.value,
-                          sponsorsLockedMessage: e.target.value
+                          sponsorsLockedMessage: e.target.value,
                         };
-                        setEditData({ ...editData, eventControl: updated });
+                        setEditData({
+                          ...editData,
+                          sponsorsLockedMessage: e.target.value,
+                          eventControl: updated,
+                        });
                       }}
-                      className="w-full bg-[#141b26] border border-[#FF4655]/40 text-white p-2 text-xs font-mono focus:border-[#FF4655] outline-none"
-                      placeholder="PARTNER ALLIANCES ARE CURRENTLY CLASSIFIED. OFFICIAL PARTNERS WILL BE UNVEILED CLOSER TO LAUNCH."
+                      className="w-full bg-[#141b26] border border-[#FF4655]/50 text-white p-2.5 text-xs font-mono focus:border-[#FF4655] outline-none resize-none"
+                      placeholder="SPONSOR ALLIANCES ARE CURRENTLY CLASSIFIED. OFFICIAL SPONSORS WILL BE UNVEILED CLOSER TO LAUNCH."
                     />
+                    <p className="font-rajdhani text-[11px] text-neutral-400">
+                      This message appears on the public classified lockdown banner in the sponsors section.
+                    </p>
                   </div>
                 )}
               </div>
 
-              <div className="flex items-center justify-between">
-                <p className="font-rajdhani text-xs text-neutral-400">
-                  Manage official partners and allies ({partners.length} active). Add logos, tiers, and roles.
-                </p>
+              {/* Header and Add Button */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-[#0c1017] border border-[#FFAA00]/30 sf-clip-angled-sm">
+                <div>
+                  <h4 className="font-cinzel font-bold text-sm text-white uppercase tracking-wider flex items-center gap-2">
+                    <Crown className="w-4 h-4 text-[#FFAA00]" />
+                    <span>Official Sponsors ({sponsors.length} Total)</span>
+                  </h4>
+                  <p className="font-rajdhani text-xs text-neutral-400 mt-0.5">
+                    Displayed as an infinite scrolling logo marquee after Battle Prizes. Add, edit, or delete sponsor brands and upload high-res logos.
+                  </p>
+                </div>
+
                 <button
+                  type="button"
+                  onClick={() => {
+                    const newSponsor = {
+                      id: `sp-${Date.now()}`,
+                      name: 'NEW SPONSOR ORGANIZATION',
+                      tier: 'Gold',
+                      category: 'Cloud & AI Infrastructure',
+                      perk: 'Official Arena Combat Sponsor',
+                      logoUrl: '',
+                      websiteUrl: '',
+                    };
+                    const updated = [newSponsor, ...sponsors];
+                    setEditData({ ...editData, sponsors: updated });
+                  }}
+                  className="px-4 py-2 border border-[#FFAA00] bg-[#FFAA00]/20 hover:bg-[#FFAA00]/30 text-[#FFAA00] font-cinzel text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 sf-clip-angled-sm cursor-pointer shadow-[0_0_12px_rgba(255,170,0,0.2)]"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>ADD SPONSOR</span>
+                </button>
+              </div>
+
+              {/* Sponsors List (Scrollable) */}
+              <div
+                data-lenis-prevent="true"
+                className="space-y-4 max-h-[62vh] overflow-y-auto p-1 custom-admin-scrollbar"
+              >
+                {sponsors.length === 0 ? (
+                  <div className="p-10 border border-dashed border-neutral-700 bg-[#0e131d]/60 text-center font-rajdhani text-sm text-neutral-400 space-y-3">
+                    <p>No sponsors configured yet. Click "+ ADD SPONSOR" above to add your first sponsor.</p>
+                  </div>
+                ) : (
+                  sponsors.map((sp, idx) => (
+                    <div
+                      key={sp.id || idx}
+                      className="p-5 border border-[#FFAA00]/30 hover:border-[#FFAA00] bg-[#0e131d] sf-clip-angled-sm space-y-4 relative transition-all group"
+                    >
+                      {/* Delete Sponsor Button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm(`Delete sponsor "${sp.name || 'this sponsor'}"?`)) {
+                            const updated = sponsors.filter((_, i) => i !== idx);
+                            setEditData({ ...editData, sponsors: updated });
+                          }
+                        }}
+                        className="absolute top-4 right-4 text-neutral-500 hover:text-[#FF4655] p-1.5 bg-black/40 hover:bg-[#FF4655]/10 border border-neutral-800 hover:border-[#FF4655]/50 transition-colors cursor-pointer"
+                        title="Delete sponsor"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+
+                      {/* Header with index badge */}
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[10px] text-[#FFAA00] font-bold px-2 py-0.5 bg-[#FFAA00]/10 border border-[#FFAA00]/40">
+                          #{String(idx + 1).padStart(2, '0')}
+                        </span>
+                        <span className="font-cinzel text-xs font-bold text-white uppercase tracking-wider">
+                          {sp.name || 'UNNAMED SPONSOR'}
+                        </span>
+                        <span className="text-[10px] font-mono uppercase px-2 py-0.5 bg-neutral-800 text-neutral-300 border border-neutral-700">
+                          {sp.tier || 'Gold'}
+                        </span>
+                      </div>
+
+                      {/* Name & Tier */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="sm:col-span-2">
+                          <label className="text-[10px] text-[#F5D061] font-bold uppercase block mb-1">
+                            Sponsor Organization Name *
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={sp.name || ''}
+                            onChange={(e) => {
+                              const updated = [...sponsors];
+                              updated[idx] = { ...updated[idx], name: e.target.value };
+                              setEditData({ ...editData, sponsors: updated });
+                            }}
+                            className="w-full bg-[#141b26] border border-[#D4AF37]/40 text-white p-2.5 text-xs font-rajdhani font-bold focus:border-[#FFAA00] outline-none"
+                            placeholder="e.g. Google Cloud, GitHub, Supabase"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] text-[#F5D061] font-bold uppercase block mb-1">
+                            Sponsorship Tier
+                          </label>
+                          <select
+                            value={sp.tier || 'Gold'}
+                            onChange={(e) => {
+                              const updated = [...sponsors];
+                              updated[idx] = { ...updated[idx], tier: e.target.value };
+                              setEditData({ ...editData, sponsors: updated });
+                            }}
+                            className="w-full bg-[#141b26] border border-[#D4AF37]/40 text-white p-2.5 text-xs font-rajdhani font-semibold focus:border-[#FFAA00] outline-none"
+                          >
+                            <option value="Title Partner">Title Partner (Exclusive)</option>
+                            <option value="Platinum">Platinum Partner</option>
+                            <option value="Gold">Gold Partner</option>
+                            <option value="Silver">Silver Partner</option>
+                            <option value="Ecosystem">Ecosystem & Community</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Category & Perks */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] text-[#F5D061] font-bold uppercase block mb-1">
+                            Domain Category / Tagline
+                          </label>
+                          <input
+                            type="text"
+                            value={sp.category || ''}
+                            onChange={(e) => {
+                              const updated = [...sponsors];
+                              updated[idx] = { ...updated[idx], category: e.target.value };
+                              setEditData({ ...editData, sponsors: updated });
+                            }}
+                            className="w-full bg-[#141b26] border border-[#D4AF37]/30 text-white p-2 text-xs font-rajdhani focus:border-[#FFAA00] outline-none"
+                            placeholder="e.g. Cloud Infrastructure, AI Grants, Developer Tooling"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] text-[#F5D061] font-bold uppercase block mb-1">
+                            Perks / Bounty Highlight
+                          </label>
+                          <input
+                            type="text"
+                            value={sp.perk || ''}
+                            onChange={(e) => {
+                              const updated = [...sponsors];
+                              updated[idx] = { ...updated[idx], perk: e.target.value };
+                              setEditData({ ...editData, sponsors: updated });
+                            }}
+                            className="w-full bg-[#141b26] border border-[#D4AF37]/30 text-white p-2 text-xs font-rajdhani focus:border-[#FFAA00] outline-none"
+                            placeholder="e.g. ₹50,000 Track Bounty + API Credits"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Logo URL & Upload */}
+                      <div>
+                        <label className="text-[10px] text-[#F5D061] font-bold uppercase block mb-1">
+                          Sponsor Logo (URL or Direct Upload)
+                        </label>
+                        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                          {/* Logo Preview Container */}
+                          <div className="w-24 h-14 bg-white/95 border border-neutral-400 flex items-center justify-center p-1.5 shrink-0 rounded-sm">
+                            {sp.logoUrl ? (
+                              <img
+                                src={sp.logoUrl}
+                                alt="Logo Preview"
+                                className="max-h-full max-w-full object-contain"
+                              />
+                            ) : (
+                              <span className="font-mono font-bold text-xs text-neutral-400">
+                                NO LOGO
+                              </span>
+                            )}
+                          </div>
+
+                          <input
+                            type="text"
+                            value={sp.logoUrl || ''}
+                            onChange={(e) => {
+                              const updated = [...sponsors];
+                              updated[idx] = { ...updated[idx], logoUrl: e.target.value };
+                              setEditData({ ...editData, sponsors: updated });
+                            }}
+                            className="flex-1 bg-[#141b26] border border-[#D4AF37]/30 text-white p-2 text-xs font-mono focus:border-[#FFAA00] outline-none"
+                            placeholder="https://... or upload image"
+                          />
+
+                          <label className="px-3.5 py-2 bg-[#FFAA00]/15 hover:bg-[#FFAA00]/25 border border-[#FFAA00]/50 text-[#FFAA00] font-rajdhani text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shrink-0">
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>Upload Logo</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const publicUrl = await uploadMediaToSupabase(file, 'sponsors');
+                                if (publicUrl) {
+                                  const updated = [...sponsors];
+                                  updated[idx] = { ...updated[idx], logoUrl: publicUrl };
+                                  setEditData({
+                                    ...editData,
+                                    sponsors: updated,
+                                  });
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Official Website URL */}
+                      <div>
+                        <label className="text-[10px] text-[#F5D061] font-bold uppercase block mb-1">
+                          Official Website / Portal URL
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="url"
+                            value={sp.websiteUrl || ''}
+                            onChange={(e) => {
+                              const updated = [...sponsors];
+                              updated[idx] = { ...updated[idx], websiteUrl: e.target.value };
+                              setEditData({ ...editData, sponsors: updated });
+                            }}
+                            className="flex-1 bg-[#141b26] border border-[#D4AF37]/30 text-white p-2 text-xs font-mono focus:border-[#FFAA00] outline-none"
+                            placeholder="https://sponsorcompany.com"
+                          />
+                          {sp.websiteUrl && (
+                            <a
+                              href={sp.websiteUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-2.5 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white border border-neutral-600 transition-colors"
+                              title="Test link in new tab"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Save All Sponsors Button */}
+              <div className="pt-3 border-t border-[#FFAA00]/30 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await handleSaveSection('sponsors', editData.sponsors || []);
+                  }}
+                  className="px-7 py-3 sf-btn-gold sf-clip-angled font-cinzel text-xs font-black tracking-[0.2em] uppercase flex items-center gap-2 cursor-pointer shadow-[0_0_20px_rgba(255,170,0,0.3)]"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>SAVE OFFICIAL SPONSORS</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 14b. OFFICIAL PARTNERS (PUBLIC GRID) */}
+          {activeSection === "partners" && (
+            <div className="space-y-5 max-w-5xl">
+              {/* Partners Quick Lock / Unlock Status Bar */}
+              <div
+                className={`p-5 border sf-clip-angled-sm flex flex-col gap-4 shadow-lg ${
+                  Boolean(eventControlData.partnersLocked)
+                    ? 'border-[#FF4655]/60 bg-[#FF4655]/10 shadow-[0_0_25px_rgba(255,70,85,0.15)]'
+                    : 'border-[#55FF55]/60 bg-[#55FF55]/10 shadow-[0_0_25px_rgba(85,255,85,0.1)]'
+                }`}
+              >
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5">
+                    <div
+                      className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 border ${
+                        Boolean(eventControlData.partnersLocked)
+                          ? 'bg-[#FF4655]/20 text-[#FF4655] border-[#FF4655]/50'
+                          : 'bg-[#55FF55]/20 text-[#55FF55] border-[#55FF55]/50'
+                      }`}
+                    >
+                      {Boolean(eventControlData.partnersLocked) ? (
+                        <Lock className="w-5 h-5" />
+                      ) : (
+                        <CheckSquare className="w-5 h-5" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-cinzel font-black text-sm text-white uppercase tracking-wider">
+                          Partners Page Status:{' '}
+                          <span
+                            className={
+                              Boolean(eventControlData.partnersLocked)
+                                ? 'text-[#FF4655]'
+                                : 'text-[#55FF55]'
+                            }
+                          >
+                            {Boolean(eventControlData.partnersLocked)
+                              ? 'RESTRICTED / LOCKED 🔒'
+                              : 'UNLOCKED / PUBLIC 🔓'}
+                          </span>
+                        </span>
+                      </div>
+                      <p className="font-rajdhani text-xs text-neutral-300 mt-0.5">
+                        {Boolean(eventControlData.partnersLocked)
+                          ? 'Visitors opening the site see the classified restricted card in the Partners section.'
+                          : 'Visitors can view all official partner cards, badges, and portals freely.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5 self-end sm:self-center">
+                    <a
+                      href="#partners"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3.5 py-2 border border-neutral-700 bg-black/40 hover:bg-black/70 text-neutral-300 hover:text-white font-rajdhani text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 sf-clip-angled-sm transition-all"
+                      title="Jump to Partners section on the site"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Preview Section</span>
+                    </a>
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const newLocked = !Boolean(eventControlData.partnersLocked);
+                        const updatedControl = {
+                          ...eventControlData,
+                          partnersLocked: newLocked,
+                        };
+                        setEditData({
+                          ...editData,
+                          partnersLocked: newLocked,
+                          eventControl: updatedControl,
+                        });
+                        await handleSaveSection('eventControl', updatedControl);
+                        setSaveStatus('saved');
+                        setTimeout(() => setSaveStatus('idle'), 2500);
+                      }}
+                      className={`px-5 py-2.5 font-cinzel text-xs font-black uppercase tracking-wider border sf-clip-angled-sm flex items-center gap-2 cursor-pointer transition-all shadow-md ${
+                        Boolean(eventControlData.partnersLocked)
+                          ? 'bg-[#55FF55]/20 border-[#55FF55] text-[#55FF55] hover:bg-[#55FF55]/30'
+                          : 'bg-[#FF4655]/20 border-[#FF4655] text-[#FF4655] hover:bg-[#FF4655]/30'
+                      }`}
+                    >
+                      {Boolean(eventControlData.partnersLocked) ? (
+                        <>
+                          <CheckSquare className="w-4 h-4" />
+                          <span>UNLOCK PARTNERS SECTION</span>
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="w-4 h-4" />
+                          <span>LOCK PARTNERS SECTION</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Editable Locked Screen Message */}
+                {Boolean(eventControlData.partnersLocked) && (
+                  <div className="pt-3 border-t border-[#FF4655]/30 space-y-1.5">
+                    <label className="text-[11px] text-[#FF4655] font-bold uppercase block tracking-wider">
+                      Classified Locked Message Shown to Visitors
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={eventControlData.partnersLockedMessage || ''}
+                      onChange={(e) => {
+                        const updated = {
+                          ...eventControlData,
+                          partnersLockedMessage: e.target.value,
+                        };
+                        setEditData({
+                          ...editData,
+                          partnersLockedMessage: e.target.value,
+                          eventControl: updated,
+                        });
+                      }}
+                      className="w-full bg-[#141b26] border border-[#FF4655]/50 text-white p-2.5 text-xs font-mono focus:border-[#FF4655] outline-none resize-none"
+                      placeholder="PARTNER ALLIANCES ARE CURRENTLY CLASSIFIED. OFFICIAL PARTNERS WILL BE UNVEILED CLOSER TO LAUNCH."
+                    />
+                    <p className="font-rajdhani text-[11px] text-neutral-400">
+                      This message appears on the public classified lockdown card in the partners section.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Header and Add Button */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-[#0c1017] border border-[#55FF55]/30 sf-clip-angled-sm">
+                <div>
+                  <h4 className="font-cinzel font-bold text-sm text-white uppercase tracking-wider flex items-center gap-2">
+                    <Handshake className="w-4 h-4 text-[#55FF55]" />
+                    <span>Official Partners ({partners.length} Total)</span>
+                  </h4>
+                  <p className="font-rajdhani text-xs text-neutral-400 mt-0.5">
+                    Displayed in the public partners grid section. Add, edit, or delete partner organizations, assign tiers, and upload logos.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
                   onClick={() => {
                     const newPartner = {
                       id: `pt-${Date.now()}`,
-                      name: "NEW PARTNER ORG",
-                      tier: "Gold",
-                      category: "Developer Ecosystem & Grants",
-                      perk: "Official Arena Combat Partner",
-                      logoUrl: "",
-                      websiteUrl: "",
+                      name: 'NEW PARTNER ORGANIZATION',
+                      tier: 'Gold',
+                      category: 'Ecosystem & Community',
+                      perk: 'Official Ecosystem Partner',
+                      logoUrl: '',
+                      websiteUrl: '',
                     };
-                    const updated = [...partners, newPartner];
-                    setEditData({ ...editData, partners: updated, sponsors: updated });
+                    const updated = [newPartner, ...partners];
+                    setEditData({ ...editData, partners: updated });
                   }}
-                  className="px-3.5 py-1.5 border border-[#D4AF37]/50 hover:bg-[#D4AF37]/10 text-[#F5D061] font-rajdhani text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer"
+                  className="px-4 py-2 border border-[#55FF55] bg-[#55FF55]/20 hover:bg-[#55FF55]/30 text-[#55FF55] font-cinzel text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 sf-clip-angled-sm cursor-pointer shadow-[0_0_12px_rgba(85,255,85,0.2)]"
                 >
-                  <Plus className="w-3.5 h-3.5" />
+                  <Plus className="w-4 h-4" />
                   <span>ADD PARTNER</span>
                 </button>
               </div>
 
-              <div data-lenis-prevent="true" className="space-y-4 max-h-[60vh] overflow-y-auto p-1 custom-admin-scrollbar">
-                {partners.map((sp, idx) => (
-                  <div
-                    key={sp.id || idx}
-                    className="p-4 sm:p-5 border border-[#D4AF37]/25 bg-[#0e131d] sf-clip-angled-sm space-y-3 relative hover:border-[#D4AF37]/60 transition-all"
-                  >
-                    <button
-                      onClick={() => {
-                        const updated = partners.filter((_, i) => i !== idx);
-                        setEditData({ ...editData, partners: updated, sponsors: updated });
-                      }}
-                      className="absolute top-3 right-3 text-neutral-500 hover:text-[#FF4655] p-1.5 cursor-pointer transition-colors"
-                      title="Delete partner"
+              {/* Partners List (Scrollable) */}
+              <div
+                data-lenis-prevent="true"
+                className="space-y-4 max-h-[62vh] overflow-y-auto p-1 custom-admin-scrollbar"
+              >
+                {partners.length === 0 ? (
+                  <div className="p-10 border border-dashed border-neutral-700 bg-[#0e131d]/60 text-center font-rajdhani text-sm text-neutral-400 space-y-3">
+                    <p>No partners configured yet. Click "+ ADD PARTNER" above to enlist your first partner.</p>
+                  </div>
+                ) : (
+                  partners.map((pt, idx) => (
+                    <div
+                      key={pt.id || idx}
+                      className="p-5 border border-[#55FF55]/30 hover:border-[#55FF55] bg-[#0e131d] sf-clip-angled-sm space-y-4 relative transition-all group"
                     >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                      {/* Delete Partner Button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm(`Delete partner "${pt.name || 'this partner'}"?`)) {
+                            const updated = partners.filter((_, i) => i !== idx);
+                            setEditData({ ...editData, partners: updated });
+                          }
+                        }}
+                        className="absolute top-4 right-4 text-neutral-500 hover:text-[#FF4655] p-1.5 bg-black/40 hover:bg-[#FF4655]/10 border border-neutral-800 hover:border-[#FF4655]/50 transition-colors cursor-pointer"
+                        title="Delete partner"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="sm:col-span-2">
-                        <label className="text-[10px] text-[#F5D061] font-bold uppercase block mb-1">
-                          Partner Organization Name
-                        </label>
-                        <input
-                          type="text"
-                          value={sp.name || ""}
-                          onChange={(e) => {
-                            const updated = [...partners];
-                            updated[idx] = { ...updated[idx], name: e.target.value };
-                            setEditData({ ...editData, partners: updated, sponsors: updated });
-                          }}
-                          className="w-full bg-[#141b26] border border-[#D4AF37]/30 text-white p-2 text-xs font-rajdhani font-semibold focus:border-[#D4AF37] outline-none"
-                        />
+                      {/* Header with index badge */}
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[10px] text-[#55FF55] font-bold px-2 py-0.5 bg-[#55FF55]/10 border border-[#55FF55]/40">
+                          #{String(idx + 1).padStart(2, '0')}
+                        </span>
+                        <span className="font-cinzel text-xs font-bold text-white uppercase tracking-wider">
+                          {pt.name || 'UNNAMED PARTNER'}
+                        </span>
+                        <span className="text-[10px] font-mono uppercase px-2 py-0.5 bg-neutral-800 text-neutral-300 border border-neutral-700">
+                          {pt.tier || 'Gold'}
+                        </span>
                       </div>
 
+                      {/* Name & Tier */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="sm:col-span-2">
+                          <label className="text-[10px] text-[#F5D061] font-bold uppercase block mb-1">
+                            Partner Organization Name *
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={pt.name || ''}
+                            onChange={(e) => {
+                              const updated = [...partners];
+                              updated[idx] = { ...updated[idx], name: e.target.value };
+                              setEditData({ ...editData, partners: updated });
+                            }}
+                            className="w-full bg-[#141b26] border border-[#D4AF37]/40 text-white p-2.5 text-xs font-rajdhani font-bold focus:border-[#55FF55] outline-none"
+                            placeholder="e.g. Major League Hacking, Devfolio"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] text-[#F5D061] font-bold uppercase block mb-1">
+                            Partnership Tier
+                          </label>
+                          <select
+                            value={pt.tier || 'Gold'}
+                            onChange={(e) => {
+                              const updated = [...partners];
+                              updated[idx] = { ...updated[idx], tier: e.target.value };
+                              setEditData({ ...editData, partners: updated });
+                            }}
+                            className="w-full bg-[#141b26] border border-[#D4AF37]/40 text-white p-2.5 text-xs font-rajdhani font-semibold focus:border-[#55FF55] outline-none"
+                          >
+                            <option value="Title Partner">Title Partner (Exclusive)</option>
+                            <option value="Platinum">Platinum Partner</option>
+                            <option value="Gold">Gold Partner</option>
+                            <option value="Silver">Silver Partner</option>
+                            <option value="Ecosystem">Ecosystem & Community</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Category & Perks */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] text-[#F5D061] font-bold uppercase block mb-1">
+                            Domain Category / Tagline
+                          </label>
+                          <input
+                            type="text"
+                            value={pt.category || ''}
+                            onChange={(e) => {
+                              const updated = [...partners];
+                              updated[idx] = { ...updated[idx], category: e.target.value };
+                              setEditData({ ...editData, partners: updated });
+                            }}
+                            className="w-full bg-[#141b26] border border-[#D4AF37]/30 text-white p-2 text-xs font-rajdhani focus:border-[#55FF55] outline-none"
+                            placeholder="e.g. Hackathon Platform, Community Network"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] text-[#F5D061] font-bold uppercase block mb-1">
+                            Perks / Bounty Highlight
+                          </label>
+                          <input
+                            type="text"
+                            value={pt.perk || ''}
+                            onChange={(e) => {
+                              const updated = [...partners];
+                              updated[idx] = { ...updated[idx], perk: e.target.value };
+                              setEditData({ ...editData, partners: updated });
+                            }}
+                            className="w-full bg-[#141b26] border border-[#D4AF37]/30 text-white p-2 text-xs font-rajdhani focus:border-[#55FF55] outline-none"
+                            placeholder="e.g. Global Community Reach, Mentorship"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Logo URL & Upload */}
                       <div>
                         <label className="text-[10px] text-[#F5D061] font-bold uppercase block mb-1">
-                          Partnership Tier
+                          Partner Logo (URL or Direct Upload)
                         </label>
-                        <select
-                          value={sp.tier || "Gold"}
-                          onChange={(e) => {
-                            const updated = [...partners];
-                            updated[idx] = { ...updated[idx], tier: e.target.value };
-                            setEditData({ ...editData, partners: updated, sponsors: updated });
-                          }}
-                          className="w-full bg-[#141b26] border border-[#D4AF37]/30 text-white p-2 text-xs font-rajdhani focus:border-[#D4AF37] outline-none"
-                        >
-                          <option value="Title Partner">Title Partner</option>
-                          <option value="Platinum">Platinum Partner</option>
-                          <option value="Gold">Gold Partner</option>
-                          <option value="Ecosystem">Ecosystem Partner</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] text-[#F5D061] font-bold uppercase block mb-1">
-                        Domain Category / Tagline
-                      </label>
-                      <input
-                        type="text"
-                        value={sp.category || ""}
-                        onChange={(e) => {
-                          const updated = [...partners];
-                          updated[idx] = { ...updated[idx], category: e.target.value };
-                          setEditData({ ...editData, partners: updated, sponsors: updated });
-                        }}
-                        className="w-full bg-[#141b26] border border-[#D4AF37]/30 text-white p-2 text-xs font-rajdhani focus:border-[#D4AF37] outline-none"
-                        placeholder="e.g. Cloud Infrastructure, AI Grants, Developer Tooling"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] text-[#F5D061] font-bold uppercase block mb-1">
-                        Partner Logo URL or File
-                      </label>
-                      <div className="flex gap-2 items-center">
-                        {sp.logoUrl && (
-                          <div className="w-12 h-10 border border-[#D4AF37]/40 bg-[#101010] flex items-center justify-center p-1 shrink-0">
-                            <img src={sp.logoUrl} alt="Logo preview" className="max-h-full max-w-full object-contain" />
+                        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                          {/* Logo Preview Container */}
+                          <div className="w-24 h-14 bg-white/95 border border-neutral-400 flex items-center justify-center p-1.5 shrink-0 rounded-sm">
+                            {pt.logoUrl ? (
+                              <img
+                                src={pt.logoUrl}
+                                alt="Logo Preview"
+                                className="max-h-full max-w-full object-contain"
+                              />
+                            ) : (
+                              <span className="font-mono font-bold text-xs text-neutral-400">
+                                NO LOGO
+                              </span>
+                            )}
                           </div>
-                        )}
-                        <input
-                          type="text"
-                          value={sp.logoUrl || ""}
-                          onChange={(e) => {
-                            const updated = [...partners];
-                            updated[idx] = { ...updated[idx], logoUrl: e.target.value };
-                            setEditData({ ...editData, partners: updated, sponsors: updated });
-                          }}
-                          className="flex-1 bg-[#141b26] border border-[#D4AF37]/30 text-white p-2 text-xs font-mono focus:border-[#D4AF37] outline-none"
-                          placeholder="https://... or upload below"
-                        />
-                        <label className="px-3 py-2 bg-[#D4AF37]/15 hover:bg-[#D4AF37]/25 border border-[#D4AF37]/50 text-[#F5D061] font-rajdhani text-xs font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer shrink-0">
-                          <Upload className="w-3.5 h-3.5" />
-                          <span>Upload</span>
+
                           <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              const publicUrl = await uploadMediaToSupabase(file, 'partners');
-                              if (publicUrl) {
-                                const updated = [...partners];
-                                updated[idx] = { ...updated[idx], logoUrl: publicUrl };
-                                setEditData({ ...editData, partners: updated, sponsors: updated });
-                              }
+                            type="text"
+                            value={pt.logoUrl || ''}
+                            onChange={(e) => {
+                              const updated = [...partners];
+                              updated[idx] = { ...updated[idx], logoUrl: e.target.value };
+                              setEditData({ ...editData, partners: updated });
                             }}
+                            className="flex-1 bg-[#141b26] border border-[#D4AF37]/30 text-white p-2 text-xs font-mono focus:border-[#55FF55] outline-none"
+                            placeholder="https://... or upload image"
                           />
+
+                          <label className="px-3.5 py-2 bg-[#55FF55]/15 hover:bg-[#55FF55]/25 border border-[#55FF55]/50 text-[#55FF55] font-rajdhani text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shrink-0">
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>Upload Logo</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const publicUrl = await uploadMediaToSupabase(file, 'partners');
+                                if (publicUrl) {
+                                  const updated = [...partners];
+                                  updated[idx] = { ...updated[idx], logoUrl: publicUrl };
+                                  setEditData({
+                                    ...editData,
+                                    partners: updated,
+                                  });
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Official Website URL */}
+                      <div>
+                        <label className="text-[10px] text-[#F5D061] font-bold uppercase block mb-1">
+                          Official Website / Portal URL
                         </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="url"
+                            value={pt.websiteUrl || ''}
+                            onChange={(e) => {
+                              const updated = [...partners];
+                              updated[idx] = { ...updated[idx], websiteUrl: e.target.value };
+                              setEditData({ ...editData, partners: updated });
+                            }}
+                            className="flex-1 bg-[#141b26] border border-[#D4AF37]/30 text-white p-2 text-xs font-mono focus:border-[#55FF55] outline-none"
+                            placeholder="https://partnercompany.com"
+                          />
+                          {pt.websiteUrl && (
+                            <a
+                              href={pt.websiteUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-2.5 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white border border-neutral-600 transition-colors"
+                              title="Test link in new tab"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                        </div>
                       </div>
                     </div>
-
-                    <div>
-                      <label className="text-[10px] text-[#F5D061] font-bold uppercase block mb-1">
-                        Website / Portal URL
-                      </label>
-                      <input
-                        type="url"
-                        value={sp.websiteUrl || ""}
-                        onChange={(e) => {
-                          const updated = [...partners];
-                          updated[idx] = { ...updated[idx], websiteUrl: e.target.value };
-                          setEditData({ ...editData, partners: updated, sponsors: updated });
-                        }}
-                        className="w-full bg-[#141b26] border border-[#D4AF37]/30 text-white p-2 text-xs font-mono focus:border-[#D4AF37] outline-none"
-                        placeholder="https://partner.com"
-                      />
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
 
-              <div className="pt-2">
+              {/* Save All Partners Button */}
+              <div className="pt-3 border-t border-[#55FF55]/30 flex items-center justify-between">
                 <button
+                  type="button"
                   onClick={async () => {
-                    const toSave = editData.partners || editData.sponsors || [];
-                    await handleSaveSection("partners", toSave);
-                    await handleSaveSection("sponsors", toSave);
+                    await handleSaveSection('partners', editData.partners || []);
                   }}
-                  className="px-6 py-2.5 sf-btn-gold sf-clip-angled font-cinzel text-xs font-bold tracking-[0.2em] uppercase flex items-center gap-2 cursor-pointer"
+                  className="px-7 py-3 sf-btn-gold sf-clip-angled font-cinzel text-xs font-black tracking-[0.2em] uppercase flex items-center gap-2 cursor-pointer shadow-[0_0_20px_rgba(85,255,85,0.3)]"
                 >
                   <Save className="w-4 h-4" />
                   <span>SAVE OFFICIAL PARTNERS</span>
